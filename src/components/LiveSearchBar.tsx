@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Search, Rocket, Crosshair, Cpu, MapPin, Car, Building2, BookOpen, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { globalSearch, type SearchResult, type SearchCategory } from "@/data/search";
 
 const CATEGORY_ICONS: Record<SearchCategory, React.ElementType> = {
@@ -31,7 +32,9 @@ interface LiveSearchBarProps {
   placeholder?: string;
 }
 
-const LiveSearchBar = ({ placeholder = "Rechercher un vaisseau, une arme, un lieu..." }: LiveSearchBarProps) => {
+const LiveSearchBar = ({ placeholder }: LiveSearchBarProps) => {
+  const { t } = useTranslation();
+  const defaultPlaceholder = placeholder ?? t("search.livePlaceholder");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -106,7 +109,7 @@ const LiveSearchBar = ({ placeholder = "Rechercher un vaisseau, une arme, un lie
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={() => suggestions.length > 0 && setOpen(true)}
-            placeholder={placeholder}
+            placeholder={defaultPlaceholder}
             className="h-12 w-full rounded-lg border border-border bg-card/80 pl-12 pr-12 font-body text-sm text-foreground placeholder:text-muted-foreground backdrop-blur-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             autoComplete="off"
           />
@@ -163,7 +166,7 @@ const LiveSearchBar = ({ placeholder = "Rechercher un vaisseau, une arme, un lie
             onClick={handleSubmit as unknown as React.MouseEventHandler}
             className="flex w-full items-center justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
           >
-            <span>Voir tous les résultats pour « {query} »</span>
+            <span>{t("search.seeAllResults", { query })}</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>

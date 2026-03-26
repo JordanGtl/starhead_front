@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { KeyRound, ArrowLeft, CheckCircle } from "lucide-react";
-
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 
 const ForgotPassword = () => {
   const { resetPassword } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
@@ -14,10 +15,10 @@ const ForgotPassword = () => {
     e.preventDefault();
     setError("");
     const result = resetPassword(email);
-    if (result.success) {
+    if ((result as any).success) {
       setSent(true);
     } else {
-      setError(result.error || "Erreur");
+      setError((result as any).error || t("forgotPassword.error"));
     }
   };
 
@@ -30,19 +31,19 @@ const ForgotPassword = () => {
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
                 <CheckCircle className="h-6 w-6 text-emerald-400" />
               </div>
-              <h1 className="font-display text-2xl font-bold text-foreground">Email envoyé !</h1>
+              <h1 className="font-display text-2xl font-bold text-foreground">{t("forgotPassword.sentTitle")}</h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Si un compte existe avec l'adresse <span className="text-foreground">{email}</span>, vous recevrez un lien de réinitialisation.
+                {t("forgotPassword.sentDesc", { email })}
               </p>
               <p className="mt-4 text-xs text-muted-foreground italic">
-                (Mode démo : aucun email n'est réellement envoyé)
+                {t("forgotPassword.demoNote")}
               </p>
               <Link
                 to="/login"
                 className="mt-6 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                Retour à la connexion
+                {t("forgotPassword.backToLogin")}
               </Link>
             </div>
           ) : (
@@ -51,9 +52,9 @@ const ForgotPassword = () => {
                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                   <KeyRound className="h-6 w-6 text-primary" />
                 </div>
-                <h1 className="font-display text-2xl font-bold text-foreground">Mot de passe oublié</h1>
+                <h1 className="font-display text-2xl font-bold text-foreground">{t("forgotPassword.title")}</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Entrez votre email pour recevoir un lien de réinitialisation
+                  {t("forgotPassword.subtitle")}
                 </p>
               </div>
 
@@ -64,7 +65,7 @@ const ForgotPassword = () => {
                   </div>
                 )}
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">Email</label>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">{t("auth.emailLabel")}</label>
                   <input
                     type="email"
                     required
@@ -78,7 +79,7 @@ const ForgotPassword = () => {
                   type="submit"
                   className="h-10 w-full rounded-md bg-primary font-display text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                 >
-                  Envoyer le lien
+                  {t("forgotPassword.sendLink")}
                 </button>
               </form>
 
@@ -87,7 +88,7 @@ const ForgotPassword = () => {
                 className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                Retour à la connexion
+                {t("forgotPassword.backToLogin")}
               </Link>
             </>
           )}

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { VersionProvider } from "./contexts/VersionContext";
 import Navbar from "./components/Navbar";
 import Index from "./pages/Index";
 import Ships from "./pages/Ships";
@@ -14,6 +15,7 @@ import SearchPage from "./pages/SearchPage";
 import Weapons from "./pages/Weapons";
 import WeaponDetail from "./pages/WeaponDetail";
 import Locations from "./pages/Locations";
+import LocationDetail from "./pages/LocationDetail";
 import Vehicles from "./pages/Vehicles";
 import Components from "./pages/Components";
 import Login from "./pages/Login";
@@ -21,7 +23,10 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import Manufacturers from "./pages/Manufacturers";
 import ManufacturerDetail from "./pages/ManufacturerDetail";
+import Factions from "./pages/Factions";
+import Missions from "./pages/Missions";
 import Lore from "./pages/Lore";
+import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +35,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
+        <VersionProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -44,10 +50,15 @@ const App = () => (
             <Route path="/weapons/:id" element={<WeaponDetail />} />
             <Route path="/components" element={<Components />} />
             <Route path="/locations" element={<Locations />} />
+            <Route path="/locations/:id" element={<LocationDetail />} />
             <Route path="/vehicles" element={<Vehicles />} />
             <Route path="/manufacturers" element={<Manufacturers />} />
             <Route path="/manufacturers/:slug" element={<ManufacturerDetail />} />
+            <Route path="/factions" element={<Factions />} />
+            <Route path="/missions" element={<Missions />} />
             <Route path="/lore" element={<Lore />} />
+            <Route path="/tools" element={<ComingSoon />} />
+            <Route path="/news" element={<ComingSoon />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
@@ -55,6 +66,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </VersionProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

@@ -1,17 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Search, Rocket, Crosshair, MapPin, Car, Cpu, ArrowRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { globalSearch, SearchCategory, SearchResult } from "@/data/search";
 import { Badge } from "@/components/ui/badge";
-
-const categoryFilters: { value: SearchCategory; label: string; icon: typeof Rocket }[] = [
-  { value: "all", label: "Tout", icon: Search },
-  { value: "ships", label: "Vaisseaux", icon: Rocket },
-  { value: "weapons", label: "Armes", icon: Crosshair },
-  { value: "components", label: "Composants", icon: Cpu },
-  { value: "locations", label: "Lieux", icon: MapPin },
-  { value: "vehicles", label: "Véhicules", icon: Car },
-];
 
 const categoryColors: Record<string, string> = {
   ships: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -50,9 +42,19 @@ const SearchResultCard = ({ result }: { result: SearchResult }) => (
 );
 
 const SearchPage = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const initialCategory = (searchParams.get("cat") as SearchCategory) || "all";
+
+  const categoryFilters: { value: SearchCategory; label: string; icon: typeof Rocket }[] = [
+    { value: "all", label: t("search.all"), icon: Search },
+    { value: "ships", label: t("nav.ships"), icon: Rocket },
+    { value: "weapons", label: t("nav.weapons"), icon: Crosshair },
+    { value: "components", label: t("nav.components"), icon: Cpu },
+    { value: "locations", label: t("nav.locations"), icon: MapPin },
+    { value: "vehicles", label: t("nav.vehicles"), icon: Car },
+  ];
 
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState<SearchCategory>(initialCategory);
@@ -79,8 +81,8 @@ const SearchPage = () => {
   return (
     <div className="container py-8">
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold text-foreground">Recherche</h1>
-        <p className="mt-1 text-muted-foreground">Trouvez n'importe quoi dans le 'verse</p>
+        <h1 className="font-display text-3xl font-bold text-foreground">{t("search.title")}</h1>
+        <p className="mt-1 text-muted-foreground">{t("search.subtitle")}</p>
       </div>
 
       {/* Search Input */}
@@ -90,7 +92,7 @@ const SearchPage = () => {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher un vaisseau, une arme, un lieu, un composant..."
+          placeholder={t("search.placeholder")}
           autoFocus
           className="h-12 w-full rounded-lg border border-border bg-card pl-12 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
@@ -123,17 +125,17 @@ const SearchPage = () => {
       {!query ? (
         <div className="py-20 text-center text-muted-foreground">
           <Search className="mx-auto mb-3 h-12 w-12 text-muted-foreground/30" />
-          <p>Commencez à taper pour rechercher dans la base de données</p>
+          <p>{t("search.startTyping")}</p>
         </div>
       ) : results.length === 0 ? (
         <div className="py-20 text-center text-muted-foreground">
-          <p>Aucun résultat pour "<span className="text-foreground">{query}</span>"</p>
-          <p className="mt-1 text-xs">Essayez avec d'autres termes ou changez de catégorie</p>
+          <p>{t("search.noResults", { query })}</p>
+          <p className="mt-1 text-xs">{t("search.tryOtherTerms")}</p>
         </div>
       ) : (
         <>
           <p className="mb-4 text-sm text-muted-foreground">
-            {results.length} résultat(s) trouvé(s)
+            {t("search.resultsFound", { count: results.length })}
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {results.map((r) => (

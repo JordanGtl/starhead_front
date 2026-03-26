@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { apiFetch, getToken, setToken, removeToken, API_URL } from "@/lib/api";
+import i18n from "@/i18n";
 
 export interface User {
   id: number;
@@ -40,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }).then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body.message ?? 'Email ou mot de passe incorrect');
+          throw new Error(body.message ?? i18n.t('auth.incorrectCredentials'));
         }
         return res.json();
       });
@@ -50,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(me);
       return { success: true };
     } catch (e: unknown) {
-      return { success: false, error: e instanceof Error ? e.message : 'Erreur de connexion' };
+      return { success: false, error: e instanceof Error ? e.message : i18n.t('auth.loginError') };
     }
   }, []);
 
@@ -62,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       return login(email, password);
     } catch (e: unknown) {
-      return { success: false, error: e instanceof Error ? e.message : "Erreur lors de l'inscription" };
+      return { success: false, error: e instanceof Error ? e.message : i18n.t('auth.signupError') };
     }
   }, [login]);
 
@@ -72,7 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
-    if (!email) return { success: false, error: 'Email requis' };
+    if (!email) return { success: false, error: i18n.t('auth.emailRequired') };
     return { success: true };
   }, []);
 

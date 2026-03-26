@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Plus, X, Ruler, Weight, Gauge, Fuel, Shield, Heart, Box, Users, Zap, Thermometer } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { shipsDetailed, ShipDetailed } from "@/data/ships-detailed";
 import { ships } from "@/data/ships";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ const statusColor: Record<string, string> = {
 };
 
 interface SpecRow {
-  label: string;
+  labelKey: string;
   icon: typeof Ruler;
   getValue: (s: ShipDetailed) => string | number;
   unit?: string;
@@ -22,20 +23,18 @@ interface SpecRow {
 }
 
 const specRows: SpecRow[] = [
-  { label: "Longueur", icon: Ruler, getValue: (s) => s.specs.length, unit: "m" },
-  { label: "Largeur", icon: Ruler, getValue: (s) => s.specs.beam, unit: "m" },
-  { label: "Hauteur", icon: Ruler, getValue: (s) => s.specs.height, unit: "m" },
-  { label: "Masse", icon: Weight, getValue: (s) => `${(s.specs.mass / 1000).toFixed(0)}t` },
-  { label: "Vitesse SCM", icon: Gauge, getValue: (s) => s.specs.scmSpeed, unit: "m/s", higherIsBetter: true },
-  { label: "Vitesse Max", icon: Gauge, getValue: (s) => s.specs.maxSpeed, unit: "m/s", higherIsBetter: true },
-  { label: "QT Fuel", icon: Fuel, getValue: (s) => s.specs.qtFuelCapacity.toLocaleString(), higherIsBetter: true },
-  { label: "H2 Fuel", icon: Fuel, getValue: (s) => s.specs.hydrogenFuelCapacity.toLocaleString(), higherIsBetter: true },
-  { label: "Bouclier HP", icon: Shield, getValue: (s) => s.specs.shieldHp.toLocaleString(), higherIsBetter: true },
-  { label: "Coque HP", icon: Heart, getValue: (s) => s.specs.hullHp.toLocaleString(), higherIsBetter: true },
-  { label: "Cargo", icon: Box, getValue: (s) => s.cargo, unit: "SCU", higherIsBetter: true },
-  { label: "Équipage", icon: Users, getValue: (s) => s.crew },
-  { label: "Prix", icon: Zap, getValue: (s) => s.price.toLocaleString(), unit: "aUEC" },
-  { label: "Hardpoints", icon: Thermometer, getValue: (s) => s.hardpoints.length, higherIsBetter: true },
+  { labelKey: "shipCompare.specLength", icon: Ruler, getValue: (s) => s.specs.length, unit: "m" },
+  { labelKey: "shipCompare.specBeam", icon: Ruler, getValue: (s) => s.specs.beam, unit: "m" },
+  { labelKey: "shipCompare.specHeight", icon: Ruler, getValue: (s) => s.specs.height, unit: "m" },
+  { labelKey: "shipCompare.specMass", icon: Weight, getValue: (s) => `${(s.specs.mass / 1000).toFixed(0)}t` },
+  { labelKey: "shipCompare.specScm", icon: Gauge, getValue: (s) => s.specs.scmSpeed, unit: "m/s", higherIsBetter: true },
+  { labelKey: "shipCompare.specMax", icon: Gauge, getValue: (s) => s.specs.maxSpeed, unit: "m/s", higherIsBetter: true },
+  { labelKey: "shipCompare.specShield", icon: Shield, getValue: (s) => s.specs.shieldHp.toLocaleString(), higherIsBetter: true },
+  { labelKey: "shipCompare.specHull", icon: Heart, getValue: (s) => s.specs.hullHp.toLocaleString(), higherIsBetter: true },
+  { labelKey: "shipCompare.specCargo", icon: Box, getValue: (s) => s.cargo, unit: "SCU", higherIsBetter: true },
+  { labelKey: "shipCompare.specCrew", icon: Users, getValue: (s) => s.crew },
+  { labelKey: "shipCompare.specPrice", icon: Zap, getValue: (s) => s.price.toLocaleString(), unit: "aUEC" },
+  { labelKey: "shipCompare.specHardpoints", icon: Thermometer, getValue: (s) => s.hardpoints.length, higherIsBetter: true },
 ];
 
 const getBestIndex = (ships: ShipDetailed[], row: SpecRow): number | null => {
@@ -64,6 +63,7 @@ const ShipSelector = ({
   onRemove: () => void;
   usedIds: string[];
 }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -75,7 +75,7 @@ const ShipSelector = ({
           className="flex h-48 w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-card/50 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
         >
           <Plus className="h-8 w-8" />
-          <span className="text-sm font-medium">Ajouter un vaisseau</span>
+          <span className="text-sm font-medium">{t("shipCompare.addShip")}</span>
         </button>
         {open && (
           <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-auto rounded-lg border border-border bg-card shadow-xl">
@@ -84,7 +84,7 @@ const ShipSelector = ({
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher..."
+                placeholder={t("shipCompare.searchPlaceholder")}
                 className="h-9 w-full rounded-md border border-border bg-secondary px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
               />
             </div>
@@ -111,7 +111,6 @@ const ShipSelector = ({
 
   return (
     <div className="relative overflow-hidden rounded-lg border border-border bg-card">
-      {/* Background image */}
       {(() => {
         const shipImage = ships.find(s => s.id === selected.id)?.image;
         return shipImage ? (
@@ -144,6 +143,7 @@ const ShipSelector = ({
 };
 
 const ShipCompare = () => {
+  const { t } = useTranslation();
   const [slots, setSlots] = useState<(ShipDetailed | null)[]>([null, null]);
 
   const selectedShips = slots.filter(Boolean) as ShipDetailed[];
@@ -169,12 +169,12 @@ const ShipCompare = () => {
     <div className="container py-8">
       <Link to="/ships" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">
         <ArrowLeft className="h-4 w-4" />
-        Retour aux vaisseaux
+        {t("shipCompare.backToShips")}
       </Link>
 
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold text-foreground">Comparateur</h1>
-        <p className="mt-1 text-muted-foreground">Comparez jusqu'à {MAX_SHIPS} vaisseaux côte à côte</p>
+        <h1 className="font-display text-3xl font-bold text-foreground">{t("shipCompare.title")}</h1>
+        <p className="mt-1 text-muted-foreground">{t("shipCompare.description", { max: MAX_SHIPS })}</p>
       </div>
 
       {/* Ship selectors */}
@@ -204,7 +204,7 @@ const ShipCompare = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-card">
-                <th className="p-3 text-left font-display text-xs font-semibold text-muted-foreground">Spécification</th>
+                <th className="p-3 text-left font-display text-xs font-semibold text-muted-foreground">{t("shipCompare.spec")}</th>
                 {selectedShips.map((s) => (
                   <th key={s.id} className="p-3 text-center font-display text-xs font-semibold text-primary">{s.name}</th>
                 ))}
@@ -214,11 +214,11 @@ const ShipCompare = () => {
               {specRows.map((row) => {
                 const bestIdx = getBestIndex(selectedShips, row);
                 return (
-                  <tr key={row.label} className="border-b border-border/50 transition-colors hover:bg-secondary/30">
+                  <tr key={row.labelKey} className="border-b border-border/50 transition-colors hover:bg-secondary/30">
                     <td className="p-3">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <row.icon className="h-3.5 w-3.5" />
-                        <span className="text-xs font-medium">{row.label}</span>
+                        <span className="text-xs font-medium">{t(row.labelKey)}</span>
                       </div>
                     </td>
                     {selectedShips.map((s, i) => {
@@ -243,7 +243,7 @@ const ShipCompare = () => {
 
       {selectedShips.length < 2 && (
         <div className="rounded-lg border border-border/50 bg-card/30 py-16 text-center text-muted-foreground">
-          <p className="text-sm">Sélectionnez au moins 2 vaisseaux pour lancer la comparaison</p>
+          <p className="text-sm">{t("shipCompare.selectMin")}</p>
         </div>
       )}
     </div>

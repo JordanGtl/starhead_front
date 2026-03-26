@@ -1,4 +1,5 @@
 import { Zap, Crosshair, Thermometer, Eye, X, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { ShipComponent, ShipDetailed } from "@/data/ships-detailed";
 import { weapons } from "@/data/weapons";
 
@@ -98,18 +99,19 @@ interface Props {
 }
 
 const LoadoutCompare = ({ configA, configB, ship, allComponents, onClose }: Props) => {
+  const { t } = useTranslation();
   const statsA = computeLoadoutStats(configA, ship, allComponents);
   const statsB = computeLoadoutStats(configB, ship, allComponents);
 
   const statRows: { label: string; icon: typeof Zap; a: number; b: number; unit: string; higherIsBetter: boolean }[] = [
-    { label: "Énergie", icon: Zap, a: statsA.powerBalance, b: statsB.powerBalance, unit: "pwr", higherIsBetter: true },
-    { label: "Puissance générée", icon: Zap, a: statsA.powerGen, b: statsB.powerGen, unit: "", higherIsBetter: true },
-    { label: "Puissance utilisée", icon: Zap, a: statsA.powerUsed, b: statsB.powerUsed, unit: "", higherIsBetter: false },
-    { label: "DPS Total", icon: Crosshair, a: statsA.totalDps, b: statsB.totalDps, unit: "", higherIsBetter: true },
-    { label: "Refroidissement", icon: Thermometer, a: statsA.coolingBalance, b: statsB.coolingBalance, unit: "cool", higherIsBetter: true },
-    { label: "Capacité refroid.", icon: Thermometer, a: statsA.coolingGen, b: statsB.coolingGen, unit: "", higherIsBetter: true },
-    { label: "Chaleur générée", icon: Thermometer, a: statsA.heatGen, b: statsB.heatGen, unit: "", higherIsBetter: false },
-    { label: "Signatures", icon: Eye, a: statsA.totalEmission, b: statsB.totalEmission, unit: "", higherIsBetter: false },
+    { label: t("loadoutCompare.energy"), icon: Zap, a: statsA.powerBalance, b: statsB.powerBalance, unit: "pwr", higherIsBetter: true },
+    { label: t("loadoutCompare.powerGenerated"), icon: Zap, a: statsA.powerGen, b: statsB.powerGen, unit: "", higherIsBetter: true },
+    { label: t("loadoutCompare.powerUsed"), icon: Zap, a: statsA.powerUsed, b: statsB.powerUsed, unit: "", higherIsBetter: false },
+    { label: t("loadoutCompare.dpsTotal"), icon: Crosshair, a: statsA.totalDps, b: statsB.totalDps, unit: "", higherIsBetter: true },
+    { label: t("loadoutCompare.cooling"), icon: Thermometer, a: statsA.coolingBalance, b: statsB.coolingBalance, unit: "cool", higherIsBetter: true },
+    { label: t("loadoutCompare.coolingCapacity"), icon: Thermometer, a: statsA.coolingGen, b: statsB.coolingGen, unit: "", higherIsBetter: true },
+    { label: t("loadoutCompare.heatGenerated"), icon: Thermometer, a: statsA.heatGen, b: statsB.heatGen, unit: "", higherIsBetter: false },
+    { label: t("loadoutCompare.signatures"), icon: Eye, a: statsA.totalEmission, b: statsB.totalEmission, unit: "", higherIsBetter: false },
   ];
 
   // Component differences
@@ -125,7 +127,7 @@ const LoadoutCompare = ({ configA, configB, ship, allComponents, onClose }: Prop
     <div className="mb-8 rounded-xl border border-border bg-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border/50 bg-secondary/30 px-5 py-3">
-        <span className="text-sm font-semibold text-foreground">Comparaison de configurations</span>
+        <span className="text-sm font-semibold text-foreground">{t("loadoutCompare.title")}</span>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
           <X className="h-4 w-4" />
         </button>
@@ -176,7 +178,7 @@ const LoadoutCompare = ({ configA, configB, ship, allComponents, onClose }: Prop
       {/* Component differences */}
       <div className="border-t border-border/50">
         <div className="px-4 py-2.5 bg-secondary/20">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Composants</span>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("loadoutCompare.components")}</span>
         </div>
         <div className="divide-y divide-border/20">
           {allTypes.map(type => {
@@ -207,7 +209,7 @@ const LoadoutCompare = ({ configA, configB, ship, allComponents, onClose }: Prop
       {/* Hardpoint differences */}
       <div className="border-t border-border/50">
         <div className="px-4 py-2.5 bg-secondary/20">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Armes</span>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("loadoutCompare.weapons")}</span>
         </div>
         <div className="divide-y divide-border/20">
           {hpIndices.map(i => {
@@ -224,12 +226,12 @@ const LoadoutCompare = ({ configA, configB, ship, allComponents, onClose }: Prop
                 </div>
                 <div className="px-4 py-2 text-center border-x border-border/20">
                   <p className={`text-xs truncate ${isDifferent ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                    {wA || <span className="italic">Vide</span>}
+                    {wA || <span className="italic">{t("loadoutCompare.empty")}</span>}
                   </p>
                 </div>
                 <div className="px-4 py-2 text-center">
                   <p className={`text-xs truncate ${isDifferent ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                    {wB || <span className="italic">Vide</span>}
+                    {wB || <span className="italic">{t("loadoutCompare.empty")}</span>}
                   </p>
                 </div>
               </div>

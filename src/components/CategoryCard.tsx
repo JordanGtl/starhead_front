@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface CategoryCardProps {
   title: string;
@@ -10,6 +11,7 @@ interface CategoryCardProps {
 }
 
 const CategoryCard = ({ title, description, icon: Icon, count, href }: CategoryCardProps) => {
+  const { t } = useTranslation();
   return (
     <Link
       to={href}
@@ -23,7 +25,7 @@ const CategoryCard = ({ title, description, icon: Icon, count, href }: CategoryC
         <h3 className="font-display text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         <div className="mt-3 font-display text-xs font-medium text-primary">
-          {count} entrées →
+          {count} {t("common.entries")} →
         </div>
       </div>
     </Link>

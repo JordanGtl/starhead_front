@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Shield, Zap, Thermometer, Crosshair, Eye, Wrench, RotateCcw, Share2, ClipboardList, Save, FolderOpen, Trash2, X, GitCompare } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { getShipById, ShipComponent } from "@/data/ships-detailed";
 import { ships } from "@/data/ships";
@@ -143,11 +144,13 @@ const ShipLoadout = () => {
   const [showSaves, setShowSaves] = useState(false);
   const [compareSelection, setCompareSelection] = useState<number[]>([]);
 
+  const { t } = useTranslation();
+
   if (!ship) {
     return (
       <div className="container flex min-h-[60vh] flex-col items-center justify-center text-center">
-        <h1 className="font-display text-2xl font-bold text-foreground">Vaisseau introuvable</h1>
-        <Link to="/ships" className="mt-4 text-primary hover:underline">← Retour aux vaisseaux</Link>
+        <h1 className="font-display text-2xl font-bold text-foreground">{t("loadout.shipNotFound")}</h1>
+        <Link to="/ships" className="mt-4 text-primary hover:underline">← {t("loadout.backToShips")}</Link>
       </div>
     );
   }
@@ -183,28 +186,28 @@ const ShipLoadout = () => {
 
   const copyShareLink = () => {
     navigator.clipboard.writeText(generateShareUrl());
-    toast.success("Lien copié dans le presse-papier !");
+    toast.success(t("loadout.linkCopied"));
   };
 
   const copyTextSummary = () => {
     const lines = [`⚙️ ${ship.name} — Configuration`];
     lines.push(`${ship.manufacturer} · ${ship.role}\n`);
-    lines.push("📦 Composants :");
+    lines.push(`📦 ${t("loadout.componentsLabel")}`);
     Object.entries(loadout).forEach(([type, comp]) => {
       lines.push(`  ${type}: ${comp.name} [${comp.grade}] (${comp.manufacturer})`);
     });
-    lines.push("\n🔫 Armes :");
+    lines.push(`\n🔫 ${t("loadout.weaponsLabel")}`);
     ship.hardpoints.forEach((hp, i) => {
       const wName = hardpointWeapons[i];
-      lines.push(`  ${hp.slot} (S${hp.size}): ${wName || "Vide"}`);
+      lines.push(`  ${hp.slot} (S${hp.size}): ${wName || t("loadout.empty")}`);
     });
-    lines.push(`\n📊 Statistiques :`);
-    lines.push(`  Énergie: ${powerBalance >= 0 ? "+" : ""}${powerBalance}`);
+    lines.push(`\n📊 ${t("loadout.statsLabel")}`);
+    lines.push(`  ${t("loadout.energy")}: ${powerBalance >= 0 ? "+" : ""}${powerBalance}`);
     lines.push(`  DPS: ${totalDps}`);
-    lines.push(`  Refroidissement: ${coolingBalance >= 0 ? "+" : ""}${coolingBalance}`);
-    lines.push(`  Signatures: ${totalEmission}`);
+    lines.push(`  ${t("loadout.cooling")}: ${coolingBalance >= 0 ? "+" : ""}${coolingBalance}`);
+    lines.push(`  ${t("loadout.signatures")}: ${totalEmission}`);
     navigator.clipboard.writeText(lines.join("\n"));
-    toast.success("Configuration copiée en texte !");
+    toast.success(t("loadout.configCopied"));
   };
 
   const saveCurrentLoadout = () => {
@@ -220,7 +223,7 @@ const ShipLoadout = () => {
     setSavedLoadoutsState(updated);
     setSavedLoadouts(id, updated);
     setSaveName("");
-    toast.success(`"${name}" sauvegardé !`);
+    toast.success(t("loadout.savedSuccess", { name }));
   };
 
   const loadSavedLoadout = (saved: SavedLoadout) => {
@@ -235,7 +238,7 @@ const ShipLoadout = () => {
       restoredHp[i] = saved.hardpoints[i] ?? hp.equipped ?? null;
     });
     setHardpointWeapons(restoredHp);
-    toast.success(`"${saved.name}" chargé !`);
+    toast.success(t("loadout.loadedSuccess", { name: saved.name }));
   };
 
   const deleteSavedLoadout = (index: number) => {
@@ -243,7 +246,7 @@ const ShipLoadout = () => {
     const updated = savedLoadouts.filter((_, i) => i !== index);
     setSavedLoadoutsState(updated);
     setSavedLoadouts(id, updated);
-    toast.success("Configuration supprimée");
+    toast.success(t("loadout.deletedSuccess"));
   };
 
   const toggleCompareSelection = (index: number) => {
@@ -303,7 +306,7 @@ const ShipLoadout = () => {
     <div className="container py-8">
       <Link to={`/ships/${id}`} className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">
         <ArrowLeft className="h-4 w-4" />
-        Retour au vaisseau
+        {t("loadout.backToShip")}
       </Link>
 
       {/* Hero */}
@@ -319,7 +322,7 @@ const ShipLoadout = () => {
             <div>
               <div className="mb-2 flex items-center gap-2">
                 <Wrench className="h-5 w-5 text-primary" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-primary">Configurateur</span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("loadout.title")}</span>
               </div>
               <h1 className="font-display text-3xl font-bold text-foreground">{ship.name}</h1>
               <p className="text-sm text-muted-foreground">{ship.manufacturer} · {ship.role}</p>
@@ -333,7 +336,7 @@ const ShipLoadout = () => {
                   }`}
                 >
                   <FolderOpen className="h-4 w-4" />
-                  <span className="hidden sm:inline">Mes configs</span>
+                  <span className="hidden sm:inline">{t("loadout.myConfigs")}</span>
                   {savedLoadouts.length > 0 && (
                     <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1 text-[10px] font-bold text-primary">
                       {savedLoadouts.length}
@@ -346,7 +349,7 @@ const ShipLoadout = () => {
                   className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-primary/30"
                 >
                   <FolderOpen className="h-4 w-4" />
-                  <span className="hidden sm:inline">Connexion pour sauvegarder</span>
+                  <span className="hidden sm:inline">{t("loadout.loginToSave")}</span>
                 </Link>
               )}
               <button
@@ -354,21 +357,21 @@ const ShipLoadout = () => {
                 className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-primary/30"
               >
                 <ClipboardList className="h-4 w-4" />
-                <span className="hidden sm:inline">Copier texte</span>
+                <span className="hidden sm:inline">{t("loadout.copyText")}</span>
               </button>
               <button
                 onClick={copyShareLink}
                 className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
               >
                 <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Partager</span>
+                <span className="hidden sm:inline">{t("loadout.share")}</span>
               </button>
               <button
                 onClick={resetLoadout}
                 className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-primary/30"
               >
                 <RotateCcw className="h-4 w-4" />
-                <span className="hidden sm:inline">Réinitialiser</span>
+                <span className="hidden sm:inline">{t("loadout.reset")}</span>
               </button>
             </div>
           </div>
@@ -381,7 +384,7 @@ const ShipLoadout = () => {
           <div className="flex items-center justify-between border-b border-border/50 bg-secondary/30 px-5 py-3">
             <div className="flex items-center gap-2">
               <FolderOpen className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">Configurations sauvegardées</span>
+              <span className="text-sm font-semibold text-foreground">{t("loadout.savedConfigs")}</span>
             </div>
             <button onClick={() => setShowSaves(false)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
@@ -395,7 +398,7 @@ const ShipLoadout = () => {
               value={saveName}
               onChange={e => setSaveName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && saveCurrentLoadout()}
-              placeholder="Nom de la configuration..."
+              placeholder={t("loadout.configNamePlaceholder")}
               className="flex-1 rounded-lg border border-border bg-secondary/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
             />
             <button
@@ -403,14 +406,14 @@ const ShipLoadout = () => {
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               <Save className="h-4 w-4" />
-              Sauvegarder
+              {t("loadout.save")}
             </button>
           </div>
 
           {/* Saved list */}
           {savedLoadouts.length === 0 ? (
             <div className="px-5 py-6 text-center text-sm text-muted-foreground">
-              Aucune configuration sauvegardée pour ce vaisseau
+              {t("loadout.noSavedConfigs")}
             </div>
           ) : (
             <div className="divide-y divide-border/30">
@@ -424,7 +427,7 @@ const ShipLoadout = () => {
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border text-transparent hover:border-primary/50"
                       }`}
-                      title="Sélectionner pour comparer"
+                      title={t("loadout.compareSelection")}
                     >
                       <GitCompare className="h-3 w-3" />
                     </button>
@@ -432,7 +435,7 @@ const ShipLoadout = () => {
                   <div className="flex-1 min-w-0">
                     <p className="font-display text-sm font-semibold text-foreground truncate">{saved.name}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {Object.keys(saved.components).length} composants · {Object.values(saved.hardpoints).filter(Boolean).length} armes · {new Date(saved.timestamp).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      {Object.keys(saved.components).length} {t("loadoutCompare.components").toLowerCase()} · {Object.values(saved.hardpoints).filter(Boolean).length} {t("loadoutCompare.weapons").toLowerCase()} · {new Date(saved.timestamp).toLocaleDateString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
                   <button
@@ -440,7 +443,7 @@ const ShipLoadout = () => {
                     className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
                   >
                     <FolderOpen className="h-3 w-3" />
-                    Charger
+                    {t("common.load")}
                   </button>
                   <button
                     onClick={() => deleteSavedLoadout(i)}
@@ -461,7 +464,7 @@ const ShipLoadout = () => {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <GitCompare className="h-4 w-4" />
-                Comparer « {savedLoadouts[compareSelection[0]]?.name} » vs « {savedLoadouts[compareSelection[1]]?.name} »
+                {t("loadout.compareBtn", { a: savedLoadouts[compareSelection[0]]?.name, b: savedLoadouts[compareSelection[1]]?.name })}
               </button>
             </div>
           )}
@@ -484,7 +487,7 @@ const ShipLoadout = () => {
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-1">
             <Zap className="h-4 w-4 text-amber-400" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Énergie</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("loadout.energy")}</span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className={`font-display text-2xl font-bold ${powerBalance >= 0 ? "text-emerald-400" : "text-red-400"}`}>
@@ -493,7 +496,7 @@ const ShipLoadout = () => {
             <span className="text-xs text-muted-foreground">pwr</span>
           </div>
           <div className="mt-2 text-[11px] text-muted-foreground">
-            <span className="text-emerald-400">{powerGen.toLocaleString()}</span> généré · <span className="text-red-400">{powerUsed.toLocaleString()}</span> utilisé
+            <span className="text-emerald-400">{powerGen.toLocaleString()}</span> {t("loadout.generated")} · <span className="text-red-400">{powerUsed.toLocaleString()}</span> {t("loadout.used")}
           </div>
           <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
             <div
@@ -506,10 +509,10 @@ const ShipLoadout = () => {
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-1">
             <Crosshair className="h-4 w-4 text-red-400" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">DPS Total</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("loadout.dpsTotal")}</span>
           </div>
           <span className="font-display text-2xl font-bold text-foreground">{totalDps.toLocaleString()}</span>
-          <p className="mt-1 text-[11px] text-muted-foreground">{ship.hardpoints.filter(h => h.equipped).length} armes équipées</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{ship.hardpoints.filter(h => h.equipped).length} {t("loadout.armedLabel")}</p>
           <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
             <div className="h-full rounded-full bg-red-500/60" style={{ width: `${Math.min((totalDps / 3000) * 100, 100)}%` }} />
           </div>
@@ -518,7 +521,7 @@ const ShipLoadout = () => {
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-1">
             <Thermometer className="h-4 w-4 text-cyan-400" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Refroidissement</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("loadout.cooling")}</span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className={`font-display text-2xl font-bold ${coolingBalance >= 0 ? "text-cyan-400" : "text-red-400"}`}>
@@ -527,7 +530,7 @@ const ShipLoadout = () => {
             <span className="text-xs text-muted-foreground">cool</span>
           </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
-            <span className="text-cyan-400">{coolingGen.toLocaleString()}</span> capacité · <span className="text-red-400">{heatGen.toLocaleString()}</span> chaleur
+            <span className="text-cyan-400">{coolingGen.toLocaleString()}</span> {t("loadout.capacity")} · <span className="text-red-400">{heatGen.toLocaleString()}</span> {t("loadout.heat")}
           </div>
           <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
             <div
@@ -540,11 +543,11 @@ const ShipLoadout = () => {
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-1">
             <Eye className="h-4 w-4 text-violet-400" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Signatures</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("loadout.signatures")}</span>
           </div>
           <span className="font-display text-2xl font-bold text-foreground">{totalEmission.toLocaleString()}</span>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {totalEmission < 500 ? "Furtif" : totalEmission < 1000 ? "Modéré" : "Détectable"}
+            {totalEmission < 500 ? t("loadout.stealth") : totalEmission < 1000 ? t("loadout.moderate") : t("loadout.detectable")}
           </p>
           <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
             <div className="h-full rounded-full bg-violet-500/60" style={{ width: `${Math.min((totalEmission / 2000) * 100, 100)}%` }} />
@@ -553,7 +556,7 @@ const ShipLoadout = () => {
       </div>
 
       {/* Component slots */}
-      <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Composants installés</h2>
+      <h2 className="mb-4 font-display text-lg font-semibold text-foreground">{t("loadout.installedComponents")}</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Object.entries(componentsByType).map(([type, options]) => {
           const current = loadout[type];
@@ -577,7 +580,7 @@ const ShipLoadout = () => {
               {current && stats && (
                 <div className="px-4 py-3 border-b border-border/30">
                   <p className="font-display text-sm font-bold text-foreground">{current.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{current.manufacturer} · Taille {current.size}</p>
+                  <p className="text-[11px] text-muted-foreground">{current.manufacturer} · {t("loadout.taille")} {current.size}</p>
                   <div className="mt-2 flex gap-3 text-[10px]">
                     {stats.power !== 0 && (
                       <span className={stats.power > 0 ? "text-emerald-400" : "text-red-400"}>
@@ -625,7 +628,7 @@ const ShipLoadout = () => {
       </div>
 
       {/* Hardpoints - configurable */}
-      <h2 className="mt-8 mb-4 font-display text-lg font-semibold text-foreground">Points d'emport</h2>
+      <h2 className="mt-8 mb-4 font-display text-lg font-semibold text-foreground">{t("loadout.hardpoints")}</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {ship.hardpoints.map((hp, i) => {
           const currentWeaponName = hardpointWeapons[i];
@@ -674,7 +677,7 @@ const ShipLoadout = () => {
                       !currentWeaponName ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary/50"
                     }`}
                   >
-                    <span className="italic">Vide</span>
+                    <span className="italic">{t("loadout.empty")}</span>
                   </button>
                   {compatibleWeapons.map((w) => {
                     const isActive = currentWeaponName === w.name;
@@ -696,7 +699,7 @@ const ShipLoadout = () => {
                 </div>
               ) : (
                 <div className="px-4 py-3 text-xs text-muted-foreground italic">
-                  {currentWeaponName || "Emplacement missile — non configurable"}
+                  {currentWeaponName || t("loadout.missileSlot")}
                 </div>
               )}
             </div>

@@ -53,14 +53,14 @@ export function globalSearch(query: string, category: SearchCategory = "all"): S
 
   if (category === "all" || category === "locations") {
     locations.filter(l =>
-      l.name.toLowerCase().includes(q) ||
-      l.system.toLowerCase().includes(q) ||
-      l.type.toLowerCase().includes(q)
+      (l.name ?? "").toLowerCase().includes(q) ||
+      (l.system ?? "").toLowerCase().includes(q) ||
+      (l.type ?? "").toLowerCase().includes(q)
     ).forEach(l => results.push({
-      id: l.id, name: l.name, category: "locations", categoryLabel: "Lieu",
-      subtitle: l.system + (l.parent ? ` · ${l.parent}` : ""), description: l.description,
+      id: String(l.id), name: l.name ?? l.internal ?? "", category: "locations", categoryLabel: "Lieu",
+      subtitle: (l.system ?? "") + (l.parent ? ` · ${l.parent}` : ""), description: l.description ?? "",
       link: `/locations`,
-      meta: { Type: l.type, Gravité: l.gravity, Atmosphère: l.atmosphere },
+      meta: { Type: l.type ?? "", Gravité: l.gravity ?? "", Atmosphère: l.atmosphere ?? "" },
     }));
   }
 
@@ -73,7 +73,7 @@ export function globalSearch(query: string, category: SearchCategory = "all"): S
       id: v.id, name: v.name, category: "vehicles", categoryLabel: "Véhicule",
       subtitle: v.manufacturer, description: v.description,
       link: `/vehicles`,
-      meta: { Type: v.type, Vitesse: `${v.speed} km/h`, Places: String(v.seats) },
+      meta: { Type: v.type, Vitesse: `${v.speed ?? 0} km/h`, Places: String(v.seats ?? 0) },
     }));
   }
 
@@ -83,8 +83,8 @@ export function globalSearch(query: string, category: SearchCategory = "all"): S
       c.manufacturer.toLowerCase().includes(q) ||
       c.type.toLowerCase().includes(q)
     ).forEach(c => results.push({
-      id: c.id, name: c.name, category: "components", categoryLabel: "Composant",
-      subtitle: c.manufacturer, description: c.description,
+      id: String(c.id), name: c.name, category: "components", categoryLabel: "Composant",
+      subtitle: c.manufacturer, description: c.description ?? "",
       link: `/components`,
       meta: { Type: c.type, Taille: c.size, Grade: c.grade },
     }));
@@ -109,7 +109,7 @@ export function globalSearch(query: string, category: SearchCategory = "all"): S
       l.summary.toLowerCase().includes(q) ||
       l.category.toLowerCase().includes(q)
     ).forEach(l => results.push({
-      id: l.id, name: l.title, category: "lore", categoryLabel: "Lore",
+      id: String(l.id), name: l.title, category: "lore", categoryLabel: "Lore",
       subtitle: l.category, description: l.summary,
       link: `/lore`,
       meta: { Catégorie: l.category, ...(l.date ? { Date: l.date } : {}) },

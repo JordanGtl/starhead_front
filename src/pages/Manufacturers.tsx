@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Search, Building2, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { fetchManufacturers, manufacturerIndustries, type Manufacturer } from "@/data/manufacturers";
 import { Badge } from "@/components/ui/badge";
 import bgImage from "@/assets/background-1.png";
+import heroBg from "@/assets/hero-bg.jpg";
 
 const Manufacturers = () => {
+  const { t } = useTranslation();
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +19,7 @@ const Manufacturers = () => {
     setLoading(true);
     fetchManufacturers()
       .then(setManufacturers)
-      .catch(() => setError("Impossible de charger les entreprises."))
+      .catch(() => setError(t("manufacturers.loadError")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -32,14 +35,26 @@ const Manufacturers = () => {
   }, [manufacturers, search, activeIndustry]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container py-8">
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold text-foreground">Entreprises</h1>
-          <p className="mt-1 text-muted-foreground">
-            Les corporations et fabricants qui façonnent le 'verse
-          </p>
+    <div className="relative min-h-screen bg-background">
+      {/* Image de fond sur toute la page */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[20vh] overflow-hidden">
+        <img src={heroBg} alt="" aria-hidden="true" className="h-full w-full object-cover opacity-30" style={{ objectPosition: '50% 30%' }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/60 to-background" />
+      </div>
+
+      {/* Header */}
+      <div className="relative z-10 flex min-h-[18vh] items-center">
+        <div className="container pb-2 pt-8">
+          <div className="mb-1 flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-primary" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("manufacturers.title")}</span>
+          </div>
+          <h1 className="font-display text-4xl font-bold text-foreground">{t("manufacturers.title")}</h1>
+          <p className="mt-2 max-w-lg text-sm text-muted-foreground">{t("manufacturers.description")}</p>
         </div>
+      </div>
+
+      <div className="relative z-10 container pb-8 pt-0">
 
         {/* Search + filters */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -49,7 +64,7 @@ const Manufacturers = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher une entreprise..."
+              placeholder={t("manufacturers.searchPlaceholder")}
               className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
@@ -62,7 +77,7 @@ const Manufacturers = () => {
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               }`}
             >
-              Toutes
+              {t("manufacturers.all")}
             </button>
             {manufacturerIndustries.map((ind) => (
               <button
@@ -84,7 +99,7 @@ const Manufacturers = () => {
         {loading && (
           <div className="flex items-center justify-center py-20 text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Chargement des entreprises…
+            {t("manufacturers.loading")}
           </div>
         )}
 
@@ -97,7 +112,7 @@ const Manufacturers = () => {
 
         {!loading && !error && (
           <>
-            <p className="mb-4 text-sm text-muted-foreground">{filtered.length} entreprises</p>
+            <p className="mb-4 text-sm text-muted-foreground">{t("manufacturers.count", { count: filtered.length })}</p>
 
             {/* Grid */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

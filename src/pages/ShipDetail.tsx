@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Shield, Zap, Thermometer, Gauge, Crosshair, Box, Users, Ruler, Weight, Fuel, Heart, Wrench, Rocket, Euro, Clock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { getShipById, ShipComponent, Hardpoint } from "@/data/ships-detailed";
 import { ships } from "@/data/ships";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -42,33 +43,37 @@ const ComponentRow = ({ comp }: { comp: ShipComponent }) => {
   );
 };
 
-const HardpointRow = ({ hp }: { hp: Hardpoint }) => (
-  <div className="flex items-center justify-between rounded-md border border-border bg-secondary/50 px-3 py-2.5">
-    <div className="flex items-center gap-3">
-      <Crosshair className="h-4 w-4 text-accent" />
-      <div>
-        <p className="text-sm font-medium text-foreground">{hp.slot}</p>
-        <p className="text-xs text-muted-foreground">Taille {hp.size} · {hp.type}</p>
+const HardpointRow = ({ hp }: { hp: Hardpoint }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-between rounded-md border border-border bg-secondary/50 px-3 py-2.5">
+      <div className="flex items-center gap-3">
+        <Crosshair className="h-4 w-4 text-accent" />
+        <div>
+          <p className="text-sm font-medium text-foreground">{hp.slot}</p>
+          <p className="text-xs text-muted-foreground">{t("shipDetail.taille")} {hp.size} · {hp.type}</p>
+        </div>
       </div>
+      {hp.equipped ? (
+        <span className="text-xs text-primary">{hp.equipped}</span>
+      ) : (
+        <span className="text-xs text-muted-foreground italic">{t("shipDetail.empty")}</span>
+      )}
     </div>
-    {hp.equipped ? (
-      <span className="text-xs text-primary">{hp.equipped}</span>
-    ) : (
-      <span className="text-xs text-muted-foreground italic">Vide</span>
-    )}
-  </div>
-);
+  );
+};
 
 const ShipDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const { t } = useTranslation();
   const ship = id ? getShipById(id) : undefined;
   const shipBasic = id ? ships.find(s => s.id === id) : undefined;
 
   if (!ship) {
     return (
       <div className="container flex min-h-[60vh] flex-col items-center justify-center text-center">
-        <h1 className="font-display text-2xl font-bold text-foreground">Vaisseau introuvable</h1>
-        <Link to="/ships" className="mt-4 text-primary hover:underline">← Retour aux vaisseaux</Link>
+        <h1 className="font-display text-2xl font-bold text-foreground">{t("shipDetail.notFound")}</h1>
+        <Link to="/ships" className="mt-4 text-primary hover:underline">← {t("shipDetail.backToShips")}</Link>
       </div>
     );
   }
@@ -81,7 +86,7 @@ const ShipDetail = () => {
       {/* Breadcrumb */}
       <Link to="/ships" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">
         <ArrowLeft className="h-4 w-4" />
-        Retour aux vaisseaux
+        {t("shipDetail.backToShips")}
       </Link>
 
       {/* Hero with image */}
@@ -108,7 +113,7 @@ const ShipDetail = () => {
                 </span>
                 <Badge variant="outline">{ship.role}</Badge>
                 <Badge variant="outline">{ship.size}</Badge>
-                <Badge variant="outline">{ship.crew} pilote(s)</Badge>
+                <Badge variant="outline">{ship.crew} {t("shipDetail.pilots")}</Badge>
                 <Badge variant="outline">{ship.price.toLocaleString()} aUEC</Badge>
                 <Badge variant="outline" className="border-accent/30 text-accent">
                   <Euro className="mr-1 h-3 w-3" />
@@ -122,7 +127,7 @@ const ShipDetail = () => {
               className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-5 py-2.5 text-sm font-semibold text-primary transition-all hover:bg-primary/20 hover:border-primary/50"
             >
               <Wrench className="h-4 w-4" />
-              Configurateur
+              {t("shipDetail.configurator")}
             </Link>
           </div>
         </div>
@@ -139,7 +144,7 @@ const ShipDetail = () => {
 
       {/* Lore */}
       <div className="mb-8 rounded-lg border border-border bg-card p-6">
-        <h2 className="mb-2 font-display text-lg font-semibold text-foreground">Historique</h2>
+        <h2 className="mb-2 font-display text-lg font-semibold text-foreground">{t("shipDetail.history")}</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">{ship.lore}</p>
       </div>
 
@@ -148,7 +153,7 @@ const ShipDetail = () => {
         <div className="mb-8 rounded-lg border border-border bg-card p-6">
           <h2 className="mb-4 font-display text-lg font-semibold text-foreground flex items-center gap-2">
             <Clock className="h-5 w-5 text-primary" />
-            Chronologie
+            {t("shipDetail.timeline")}
           </h2>
           <div className="relative ml-3 border-l-2 border-primary/20 pl-6">
             {shipTimelines[ship.id].map((event, i) => (
@@ -164,21 +169,21 @@ const ShipDetail = () => {
 
       {/* Specs grid */}
       <div className="mb-8">
-        <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Spécifications</h2>
+        <h2 className="mb-4 font-display text-lg font-semibold text-foreground">{t("shipDetail.specs")}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {[
-            { icon: Ruler, label: "Longueur", value: `${specs.length}m` },
-            { icon: Ruler, label: "Largeur", value: `${specs.beam}m` },
-            { icon: Ruler, label: "Hauteur", value: `${specs.height}m` },
-            { icon: Weight, label: "Masse", value: `${(specs.mass / 1000).toFixed(0)}t` },
-            { icon: Gauge, label: "SCM", value: `${specs.scmSpeed} m/s` },
-            { icon: Gauge, label: "Max", value: `${specs.maxSpeed} m/s` },
+            { icon: Ruler, label: t("shipDetail.length"), value: `${specs.length}m` },
+            { icon: Ruler, label: t("shipDetail.beam"), value: `${specs.beam}m` },
+            { icon: Ruler, label: t("shipDetail.height"), value: `${specs.height}m` },
+            { icon: Weight, label: t("shipDetail.mass"), value: `${(specs.mass / 1000).toFixed(0)}t` },
+            { icon: Gauge, label: t("shipDetail.scm"), value: `${specs.scmSpeed} m/s` },
+            { icon: Gauge, label: t("shipDetail.max"), value: `${specs.maxSpeed} m/s` },
             { icon: Fuel, label: "QT Fuel", value: `${specs.qtFuelCapacity.toLocaleString()}` },
             { icon: Fuel, label: "H2 Fuel", value: `${specs.hydrogenFuelCapacity.toLocaleString()}` },
-            { icon: Shield, label: "Bouclier", value: `${specs.shieldHp.toLocaleString()} HP` },
-            { icon: Heart, label: "Coque", value: `${specs.hullHp.toLocaleString()} HP` },
-            { icon: Box, label: "Cargo", value: `${ship.cargo} SCU` },
-            { icon: Users, label: "Équipage", value: ship.crew },
+            { icon: Shield, label: t("shipDetail.shield"), value: `${specs.shieldHp.toLocaleString()} HP` },
+            { icon: Heart, label: t("shipDetail.hull"), value: `${specs.hullHp.toLocaleString()} HP` },
+            { icon: Box, label: t("shipDetail.cargo"), value: `${ship.cargo} SCU` },
+            { icon: Users, label: t("shipDetail.crew"), value: ship.crew },
           ].map((s) => (
             <div key={s.label} className="rounded-lg border border-border bg-card p-3">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -195,13 +200,13 @@ const ShipDetail = () => {
       <Tabs defaultValue="hardpoints" className="mb-8">
         <TabsList className="bg-card border border-border">
           <TabsTrigger value="hardpoints" className="font-display text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-            Hardpoints ({ship.hardpoints.length})
+            {t("shipDetail.hardpoints")} ({ship.hardpoints.length})
           </TabsTrigger>
           <TabsTrigger value="default" className="font-display text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-            Composants ({ship.defaultComponents.length})
+            {t("shipDetail.defaultComponents")} ({ship.defaultComponents.length})
           </TabsTrigger>
           <TabsTrigger value="upgrades" className="font-display text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-            Upgrades ({ship.compatibleComponents.length})
+            {t("shipDetail.upgrades")} ({ship.compatibleComponents.length})
           </TabsTrigger>
         </TabsList>
 
@@ -214,7 +219,7 @@ const ShipDetail = () => {
         </TabsContent>
 
         <TabsContent value="default" className="mt-4">
-          <p className="mb-3 text-xs text-muted-foreground">Composants installés par défaut</p>
+          <p className="mb-3 text-xs text-muted-foreground">{t("shipDetail.defaultComponentsDesc")}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {ship.defaultComponents.map((comp, i) => (
               <ComponentRow key={i} comp={comp} />
@@ -223,7 +228,7 @@ const ShipDetail = () => {
         </TabsContent>
 
         <TabsContent value="upgrades" className="mt-4">
-          <p className="mb-3 text-xs text-muted-foreground">Composants compatibles pour améliorer ce vaisseau</p>
+          <p className="mb-3 text-xs text-muted-foreground">{t("shipDetail.upgradesDesc")}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {ship.compatibleComponents.map((comp, i) => (
               <ComponentRow key={i} comp={comp} />

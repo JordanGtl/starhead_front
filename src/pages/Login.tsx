@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import { LogIn, Rocket, Shield, Crosshair } from "lucide-react";
 
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,7 +19,7 @@ const Login = () => {
     if (result.success) {
       navigate("/");
     } else {
-      setError(result.error || "Erreur de connexion");
+      setError(result.error || t("auth.loginError"));
     }
   };
 
@@ -31,11 +33,11 @@ const Login = () => {
 
         <div className="relative z-10">
           <h2 className="font-display text-4xl font-bold text-foreground">
-            Bienvenue sur<br />
+            {t("auth.welcomeTitle")}<br />
             <span className="text-primary">StarHead</span>
           </h2>
           <p className="mt-4 max-w-md text-muted-foreground leading-relaxed">
-            La base de données ultime pour les pilotes de Star Citizen. Explorez les vaisseaux, armes, composants et bien plus encore.
+            {t("auth.brandingDesc")}
           </p>
         </div>
 
@@ -45,8 +47,8 @@ const Login = () => {
               <Rocket className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">16+ vaisseaux détaillés</p>
-              <p className="text-xs text-muted-foreground">Specs, composants et hardpoints</p>
+              <p className="text-sm font-medium text-foreground">{t("auth.feature1Title")}</p>
+              <p className="text-xs text-muted-foreground">{t("auth.feature1Desc")}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-border bg-background/50 p-4">
@@ -54,8 +56,8 @@ const Login = () => {
               <Crosshair className="h-5 w-5 text-accent" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">Arsenal complet</p>
-              <p className="text-xs text-muted-foreground">Armes embarquées et FPS</p>
+              <p className="text-sm font-medium text-foreground">{t("auth.feature2Title")}</p>
+              <p className="text-xs text-muted-foreground">{t("auth.feature2Desc")}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-border bg-background/50 p-4">
@@ -63,14 +65,14 @@ const Login = () => {
               <Shield className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">Comparateur avancé</p>
-              <p className="text-xs text-muted-foreground">Comparez jusqu'à 4 vaisseaux</p>
+              <p className="text-sm font-medium text-foreground">{t("auth.feature3Title")}</p>
+              <p className="text-xs text-muted-foreground">{t("auth.feature3Desc")}</p>
             </div>
           </div>
         </div>
 
         <p className="relative z-10 text-xs text-muted-foreground">
-          © 2954 StarHead · Données non officielles
+          {t("auth.copyright")}
         </p>
       </div>
 
@@ -81,8 +83,8 @@ const Login = () => {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <LogIn className="h-6 w-6 text-primary" />
             </div>
-            <h1 className="font-display text-2xl font-bold text-foreground">Connexion</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Accédez à votre compte StarHead</p>
+            <h1 className="font-display text-2xl font-bold text-foreground">{t("auth.loginTitle")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("auth.loginSubtitle")}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -92,7 +94,7 @@ const Login = () => {
               </div>
             )}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Email</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">{t("auth.emailLabel")}</label>
               <input
                 type="email"
                 required
@@ -103,7 +105,7 @@ const Login = () => {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Mot de passe</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">{t("auth.passwordLabel")}</label>
               <input
                 type="password"
                 required
@@ -118,18 +120,18 @@ const Login = () => {
               type="submit"
               className="h-10 w-full rounded-md bg-primary font-display text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              Se connecter
+              {t("auth.loginButton")}
             </button>
           </form>
 
           <div className="mt-4 space-y-2 text-center text-sm">
             <Link to="/forgot-password" className="block text-primary hover:underline">
-              Mot de passe oublié ?
+              {t("auth.forgotPassword")}
             </Link>
             <p className="text-muted-foreground">
-              Pas de compte ?{" "}
+              {t("auth.noAccount")}{" "}
               <Link to="/signup" className="text-primary hover:underline">
-                S'inscrire
+                {t("auth.signup")}
               </Link>
             </p>
           </div>
@@ -140,7 +142,7 @@ const Login = () => {
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
           >
             <Rocket className="h-3.5 w-3.5" />
-            Remplir avec le compte démo
+            {t("auth.demoFill")}
           </button>
         </div>
       </div>

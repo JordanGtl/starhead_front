@@ -1,41 +1,41 @@
+import { apiFetch } from '@/lib/api';
+
 export interface Weapon {
-  id: string;
+  id: number;
   name: string;
   manufacturer: string;
-  type: "Laser Cannon" | "Laser Repeater" | "Ballistic Cannon" | "Ballistic Repeater" | "Ballistic Gatling" | "Distortion" | "Missile" | "FPS Ballistic" | "FPS Energy" | "FPS Shotgun";
-  size: number | string;
-  category: "Ship" | "FPS";
-  damage: number;
-  rof: number;
-  range: number;
-  description: string;
-  lore?: string;
-  dps?: number;
-  speed?: number;
-  ammo?: number | "Unlimited";
-  powerDraw?: number;
-  heatPerShot?: number;
-  mass?: number;
+  type: string;
+  size: number | null;       // null = Personal (FPS)
+  category: 'Ship' | 'FPS';
+  damage: number | null;
+  rof: number | null;
+  range: number | null;
+  dps: number | null;
+  speed?: number | null;
+  ammo?: number | null;      // null = Unlimited
+  powerDraw?: number | null;
+  heatPerShot?: number | null;
+  mass?: number | null;
+  description: string | null;
+  lore?: string | null;
 }
 
-export const weapons: Weapon[] = [
-  { id: "w1", name: "CF-117 Badger", manufacturer: "Klaus & Werner", type: "Laser Repeater", size: 1, category: "Ship", damage: 36, rof: 700, range: 1800, description: "A reliable S1 laser repeater popular with new pilots.", lore: "Produced in the millions by Klaus & Werner, the CF-117 Badger is the most common energy repeater found across the UEE. Its low cost and maintenance requirements make it the default choice for new pilots and budget-conscious operators.", dps: 420, speed: 1400, ammo: "Unlimited", powerDraw: 67, heatPerShot: 3.1, mass: 40 },
-  { id: "w2", name: "CF-227 Panther", manufacturer: "Klaus & Werner", type: "Laser Repeater", size: 2, category: "Ship", damage: 72, rof: 625, range: 2200, description: "Mid-range laser repeater with excellent sustained DPS.", lore: "The CF-227 Panther bridges the gap between the entry-level Badger and heavy repeaters. Its optimized cooling channels allow for longer sustained bursts without overheating, making it a staple in escort and patrol configurations.", dps: 750, speed: 1400, ammo: "Unlimited", powerDraw: 125, heatPerShot: 5.8, mass: 80 },
-  { id: "w3", name: "CF-337 Panther", manufacturer: "Klaus & Werner", type: "Laser Repeater", size: 3, category: "Ship", damage: 120, rof: 550, range: 2600, description: "Heavy laser repeater offering devastating sustained fire.", lore: "The CF-337 is the heaviest repeater in the K&W Panther line. Designed for multi-crew turrets and heavy fighters, it delivers an unrelenting stream of energy bolts that can overwhelm even hardened defenses.", dps: 1100, speed: 1400, ammo: "Unlimited", powerDraw: 210, heatPerShot: 9.5, mass: 150 },
-  { id: "w4", name: "Omnisky VI", manufacturer: "Amon & Reese", type: "Laser Cannon", size: 2, category: "Ship", damage: 145, rof: 200, range: 2800, description: "Precision laser cannon with high alpha damage.", lore: "Amon & Reese's Omnisky line is renowned for accuracy and punch. The VI model concentrates energy into tight beams ideal for disabling components at range, favored by bounty hunters who need to hit hard with every shot.", dps: 483, speed: 1600, ammo: "Unlimited", powerDraw: 145, heatPerShot: 12, mass: 90 },
-  { id: "w5", name: "Omnisky IX", manufacturer: "Amon & Reese", type: "Laser Cannon", size: 3, category: "Ship", damage: 260, rof: 170, range: 3200, description: "Heavy laser cannon favored by stealth fighters.", lore: "The Omnisky IX represents the pinnacle of precision energy weaponry. Its focused beam delivers devastating alpha strikes while maintaining a relatively low IR signature, making it the weapon of choice for stealth-configured fighters like the Sabre.", dps: 737, speed: 1600, ammo: "Unlimited", powerDraw: 250, heatPerShot: 18, mass: 160 },
-  { id: "w6", name: "M4A Laser Cannon", manufacturer: "Behring", type: "Laser Cannon", size: 3, category: "Ship", damage: 250, rof: 180, range: 3000, description: "Behring's workhorse laser cannon, found on many military vessels.", lore: "The M4A has been the UEE Navy's standard laser cannon for over three decades. Battle-tested across countless engagements with Vanduul raiders, its combination of reliability, damage output, and manageable heat generation has earned it an unshakeable reputation.", dps: 750, speed: 1500, ammo: "Unlimited", powerDraw: 235, heatPerShot: 16, mass: 155 },
-  { id: "w7", name: "Mantis GT-220", manufacturer: "Gallenson Tactical", type: "Ballistic Gatling", size: 3, category: "Ship", damage: 60, rof: 2000, range: 1800, description: "High-RPM ballistic gatling that shreds shields and hull alike.", lore: "The GT-220 Mantis is a terrifying weapon. Its six rotating barrels unleash a torrent of ballistic rounds at an astounding rate, capable of stripping shields and shredding hull plating in seconds. The trade-off is significant ammunition consumption.", dps: 2000, speed: 900, ammo: 2400, powerDraw: 95, heatPerShot: 1.8, mass: 200 },
-  { id: "w8", name: "Revenant", manufacturer: "Gallenson Tactical", type: "Ballistic Gatling", size: 5, category: "Ship", damage: 95, rof: 1400, range: 2200, description: "Devastating heavy gatling, signature weapon of the Vanguard series.", lore: "Originally developed for the UEE's deep-space patrol program, the Revenant is the centerpiece of the Vanguard's nose-mounted weapons array. Its devastating rate of fire and heavy caliber rounds make it one of the most feared anti-fighter weapons in operation.", dps: 2217, speed: 900, ammo: 3200, powerDraw: 180, heatPerShot: 2.5, mass: 450 },
-  { id: "w9", name: "Strife Mass Driver", manufacturer: "Hurston Dynamics", type: "Ballistic Cannon", size: 3, category: "Ship", damage: 300, rof: 140, range: 2400, description: "Electromagnetic mass driver dealing heavy kinetic damage.", lore: "Hurston Dynamics' Strife Mass Driver uses electromagnetic rails to accelerate tungsten penetrators to extreme velocities. The kinetic impact punches through armor plating with ease, though the weapon's slow rate of fire demands precision from its operator.", dps: 700, speed: 1800, ammo: 800, powerDraw: 280, heatPerShot: 22, mass: 175 },
-  { id: "w10", name: "Attrition-2", manufacturer: "Hurston Dynamics", type: "Distortion", size: 2, category: "Ship", damage: 95, rof: 500, range: 1600, description: "Distortion repeater that disrupts enemy ship systems.", lore: "The Attrition series generates focused electromagnetic pulses that scramble electronic systems rather than causing physical damage. Used tactically to disable enemy ships for boarding operations or to create openings for conventional weapons.", dps: 792, speed: 1200, ammo: "Unlimited", powerDraw: 155, heatPerShot: 7, mass: 85 },
-  { id: "w11", name: "C-788 Combine", manufacturer: "Anvil Aerospace", type: "Ballistic Cannon", size: 4, category: "Ship", damage: 420, rof: 120, range: 2800, description: "Heavy ballistic cannon with explosive rounds.", lore: "The C-788 Combine fires high-explosive armor-piercing rounds designed to punch through capital ship armor. Originally developed for Anvil's Carrack as a defensive measure, it has found its way onto numerous large-frame combat vessels.", dps: 840, speed: 850, ammo: 600, powerDraw: 310, heatPerShot: 28, mass: 320 },
-  { id: "w12", name: "AD4B Laser Cannon", manufacturer: "Aegis Dynamics", type: "Laser Cannon", size: 4, category: "Ship", damage: 350, rof: 150, range: 3400, description: "Capital-grade laser cannon found on the Hammerhead.", lore: "Developed specifically for Aegis' Hammerhead gunship platform, the AD4B delivers punishing energy salvos at extreme range. Six of these weapons form the Hammerhead's primary armament, creating overlapping fields of fire that can destroy even heavily armored targets.", dps: 875, speed: 1600, ammo: "Unlimited", powerDraw: 340, heatPerShot: 24, mass: 280 },
-  { id: "w13", name: "P4-AR", manufacturer: "Behring", type: "FPS Ballistic", size: "Personal", category: "FPS", damage: 24, rof: 600, range: 60, description: "Standard-issue assault rifle with reliable performance.", lore: "The P4-AR is the backbone of the UEE Marine Corps' infantry arsenal. Its modular design accepts a variety of attachments, and its rugged construction withstands the harsh conditions of planetary combat across multiple biomes.", dps: 240, speed: 750, ammo: 30, powerDraw: 0, heatPerShot: 0, mass: 4.2 },
-  { id: "w14", name: "Demeco LMG", manufacturer: "Kastak Arms", type: "FPS Ballistic", size: "Personal", category: "FPS", damage: 20, rof: 800, range: 50, description: "Light machine gun with large magazine capacity.", lore: "Kastak Arms' Demeco provides suppressive firepower for squad-level operations. Its belt-fed mechanism and high capacity allow sustained fire that keeps enemies pinned while teammates maneuver. Popular with militia groups and outlaw organizations.", dps: 267, speed: 680, ammo: 100, powerDraw: 0, heatPerShot: 0, mass: 7.5 },
-  { id: "w15", name: "Arclight Pistol", manufacturer: "Klaus & Werner", type: "FPS Energy", size: "Personal", category: "FPS", damage: 30, rof: 300, range: 40, description: "Compact energy sidearm for close encounters.", lore: "The Arclight packs surprising punch for a sidearm. Using a miniaturized energy cell, it fires concentrated bolts that are effective against both armored and unarmored targets. Its compact frame makes it the preferred backup weapon for many pilots.", dps: 150, speed: 450, ammo: 20, powerDraw: 8, heatPerShot: 2, mass: 1.8 },
-  { id: "w16", name: "Devastator Shotgun", manufacturer: "Kastak Arms", type: "FPS Shotgun", size: "Personal", category: "FPS", damage: 90, rof: 80, range: 15, description: "Pump-action shotgun dealing massive close-range damage.", lore: "The Devastator lives up to its name. Each shell disperses a cloud of tungsten pellets that can incapacitate a fully armored target at close range. Favored by boarding parties and station security for its unmatched stopping power in confined spaces.", dps: 120, speed: 350, ammo: 8, powerDraw: 0, heatPerShot: 0, mass: 5.1 },
-];
+/** Cache synchrone utilisé par search.ts */
+export let weapons: Weapon[] = [];
 
-export const getWeaponById = (id: string): Weapon | undefined =>
-  weapons.find((w) => w.id === id);
+export async function fetchWeapons(params?: { q?: string; type?: string; category?: string }): Promise<Weapon[]> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set('q', params.q);
+  if (params?.type) qs.set('type', params.type);
+  if (params?.category) qs.set('category', params.category);
+  const query = qs.toString() ? `?${qs}` : '';
+  const data = await apiFetch<Weapon[]>(`/api/weapons${query}`);
+  if (!params?.q && !params?.type && !params?.category) weapons = data;
+  return data;
+}
+
+export async function fetchWeapon(id: number): Promise<Weapon> {
+  return apiFetch<Weapon>(`/api/weapons/${id}`);
+}
+
+export const getWeaponById = (id: number): Weapon | undefined => weapons.find((w) => w.id === id);

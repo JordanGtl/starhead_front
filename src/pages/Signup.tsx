@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import { UserPlus, Rocket, Shield, Crosshair } from "lucide-react";
 
 const Signup = () => {
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,7 +20,7 @@ const Signup = () => {
     if (result.success) {
       navigate("/");
     } else {
-      setError(result.error || "Erreur lors de l'inscription");
+      setError(result.error || t("auth.signupError"));
     }
   };
 
@@ -32,11 +34,11 @@ const Signup = () => {
 
         <div className="relative z-10">
           <h2 className="font-display text-4xl font-bold text-foreground">
-            Rejoignez<br />
+            {t("auth.joinTitle")}<br />
             <span className="text-primary">StarHead</span>
           </h2>
           <p className="mt-4 max-w-md text-muted-foreground leading-relaxed">
-            Créez votre compte pilote et accédez à tous les outils de la base de données Star Citizen.
+            {t("auth.signupBrandingDesc")}
           </p>
         </div>
 
@@ -46,8 +48,8 @@ const Signup = () => {
               <Rocket className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">16+ vaisseaux détaillés</p>
-              <p className="text-xs text-muted-foreground">Specs, composants et hardpoints</p>
+              <p className="text-sm font-medium text-foreground">{t("auth.feature1Title")}</p>
+              <p className="text-xs text-muted-foreground">{t("auth.feature1Desc")}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-border bg-background/50 p-4">
@@ -55,8 +57,8 @@ const Signup = () => {
               <Crosshair className="h-5 w-5 text-accent" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">Arsenal complet</p>
-              <p className="text-xs text-muted-foreground">Armes embarquées et FPS</p>
+              <p className="text-sm font-medium text-foreground">{t("auth.feature2Title")}</p>
+              <p className="text-xs text-muted-foreground">{t("auth.feature2Desc")}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-border bg-background/50 p-4">
@@ -64,14 +66,14 @@ const Signup = () => {
               <Shield className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">Comparateur avancé</p>
-              <p className="text-xs text-muted-foreground">Comparez jusqu'à 4 vaisseaux</p>
+              <p className="text-sm font-medium text-foreground">{t("auth.feature3Title")}</p>
+              <p className="text-xs text-muted-foreground">{t("auth.feature3Desc")}</p>
             </div>
           </div>
         </div>
 
         <p className="relative z-10 text-xs text-muted-foreground">
-          © 2954 StarHead · Données non officielles
+          {t("auth.copyright")}
         </p>
       </div>
 
@@ -82,8 +84,8 @@ const Signup = () => {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <UserPlus className="h-6 w-6 text-primary" />
             </div>
-            <h1 className="font-display text-2xl font-bold text-foreground">Inscription</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Créez votre compte StarHead</p>
+            <h1 className="font-display text-2xl font-bold text-foreground">{t("auth.signupTitle")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("auth.signupSubtitle")}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -93,7 +95,7 @@ const Signup = () => {
               </div>
             )}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Nom de pilote</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">{t("auth.pilotName")}</label>
               <input
                 type="text"
                 required
@@ -104,7 +106,7 @@ const Signup = () => {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Email</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">{t("auth.emailLabel")}</label>
               <input
                 type="email"
                 required
@@ -115,14 +117,14 @@ const Signup = () => {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Mot de passe</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">{t("auth.passwordLabel")}</label>
               <input
                 type="password"
                 required
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="6 caractères minimum"
+                placeholder={t("auth.passwordMinLength")}
                 className="h-10 w-full rounded-md border border-border bg-secondary px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
@@ -131,14 +133,14 @@ const Signup = () => {
               type="submit"
               className="h-10 w-full rounded-md bg-primary font-display text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              Créer mon compte
+              {t("auth.signupButton")}
             </button>
           </form>
 
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            Déjà un compte ?{" "}
+            {t("auth.alreadyAccount")}{" "}
             <Link to="/login" className="text-primary hover:underline">
-              Se connecter
+              {t("auth.connectLink")}
             </Link>
           </p>
         </div>
