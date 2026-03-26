@@ -1,0 +1,159 @@
+import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { Search, Building2, Loader2 } from "lucide-react";
+import { fetchManufacturers, manufacturerIndustries, type Manufacturer } from "@/data/manufacturers";
+import { Badge } from "@/components/ui/badge";
+import bgImage from "@/assets/background-1.png";
+
+const Manufacturers = () => {
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [activeIndustry, setActiveIndustry] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchManufacturers()
+      .then(setManufacturers)
+      .catch(() => setError("Impossible de charger les entreprises."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = useMemo(() => {
+    return manufacturers.filter((m) => {
+      const matchSearch =
+        !search ||
+        m.name.toLowerCase().includes(search.toLowerCase()) ||
+        (m.description ?? "").toLowerCase().includes(search.toLowerCase());
+      const matchIndustry = !activeIndustry || (m.industry ?? []).includes(activeIndustry);
+      return matchSearch && matchIndustry;
+    });
+  }, [manufacturers, search, activeIndustry]);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container py-8">
+        <div className="mb-8">
+          <h1 className="font-display text-3xl font-bold text-foreground">Entreprises</h1>
+          <p className="mt-1 text-muted-foreground">
+            Les corporations et fabricants qui façonnent le 'verse
+          </p>
+        </div>
+
+        {/* Search + filters */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher une entreprise..."
+              className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setActiveIndustry(null)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                !activeIndustry
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              Toutes
+            </button>
+            {manufacturerIndustries.map((ind) => (
+              <button
+                key={ind}
+                onClick={() => setActiveIndustry(activeIndustry === ind ? null : ind)}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  activeIndustry === ind
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {ind}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* États */}
+        {loading && (
+          <div className="flex items-center justify-center py-20 text-muted-foreground">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Chargement des entreprises…
+          </div>
+        )}
+
+        {error && (
+          <div className="flex flex-col items-center justify-center gap-2 py-20 text-destructive">
+            <Building2 className="h-8 w-8 opacity-50" />
+            <p>{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            <p className="mb-4 text-sm text-muted-foreground">{filtered.length} entreprises</p>
+
+            {/* Grid */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((m) => (
+                <Link
+                  key={m.id}
+                  to={`/manufacturers/${m.slug}`}
+                  className="group flex overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-primary/50"
+                >
+                  {/* Logo */}
+                  <div className="relative flex w-24 shrink-0 items-center justify-center border-r border-border text-white overflow-hidden">
+                    <img
+                      src={bgImage}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 h-full w-full object-cover opacity-50"
+                    />
+                    <div className="absolute inset-0 bg-black/60" />
+                    <div className="relative z-10 flex items-center justify-center">
+                      {m.logoBase64 ? (
+                        <img
+                          src={m.logoBase64}
+                          alt={`Logo ${m.name}`}
+                          className="max-h-16 w-20 object-contain"
+                        />
+                      ) : (
+                        <span className="text-4xl">{m.logo}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
+                    <div>
+                      <h3 className="font-display text-base font-semibold text-foreground transition-colors group-hover:text-primary">
+                        {m.name}
+                      </h3>
+                      <p className="mb-2 text-xs text-muted-foreground">{m.headquarters}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{m.description}</p>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {(m.industry ?? []).map((ind) => (
+                        <Badge key={ind} variant="secondary" className="text-[10px]">
+                          {ind}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Manufacturers;

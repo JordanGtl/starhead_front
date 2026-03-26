@@ -1,0 +1,63 @@
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import Navbar from "./components/Navbar";
+import Index from "./pages/Index";
+import Ships from "./pages/Ships";
+import ShipDetail from "./pages/ShipDetail";
+import ShipCompare from "./pages/ShipCompare";
+import ShipLoadout from "./pages/ShipLoadout";
+import SearchPage from "./pages/SearchPage";
+import Weapons from "./pages/Weapons";
+import WeaponDetail from "./pages/WeaponDetail";
+import Locations from "./pages/Locations";
+import Vehicles from "./pages/Vehicles";
+import Components from "./pages/Components";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
+import Manufacturers from "./pages/Manufacturers";
+import ManufacturerDetail from "./pages/ManufacturerDetail";
+import Lore from "./pages/Lore";
+import NotFound from "./pages/NotFound";
+
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/ships" element={<Ships />} />
+            <Route path="/ships/compare" element={<ShipCompare />} />
+            <Route path="/ships/:id/loadout" element={<ShipLoadout />} />
+            <Route path="/ships/:id" element={<ShipDetail />} />
+            <Route path="/weapons" element={<Weapons />} />
+            <Route path="/weapons/:id" element={<WeaponDetail />} />
+            <Route path="/components" element={<Components />} />
+            <Route path="/locations" element={<Locations />} />
+            <Route path="/vehicles" element={<Vehicles />} />
+            <Route path="/manufacturers" element={<Manufacturers />} />
+            <Route path="/manufacturers/:slug" element={<ManufacturerDetail />} />
+            <Route path="/lore" element={<Lore />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
+
+export default App;
