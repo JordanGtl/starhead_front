@@ -136,14 +136,6 @@ const Login = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => { setEmail("demo@starhead.app"); setPassword("demo1234"); }}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
-          >
-            <Rocket className="h-3.5 w-3.5" />
-            {t("auth.demoFill")}
-          </button>
         </div>
       </div>
     </div>

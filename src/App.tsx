@@ -25,9 +25,16 @@ import Manufacturers from "./pages/Manufacturers";
 import ManufacturerDetail from "./pages/ManufacturerDetail";
 import Factions from "./pages/Factions";
 import Missions from "./pages/Missions";
+import News from "./pages/News";
+import NewsDetail from "./pages/NewsDetail";
+import NewsAdmin from "./pages/admin/NewsAdmin";
 import Lore from "./pages/Lore";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
+import AdminRoute from "./components/AdminRoute";
+import LoadoutTool from "./pages/tools/LoadoutTool";
+import CraftingSimulator from "./pages/tools/CraftingSimulator";
+import RefiningSimulator from "./pages/tools/RefiningSimulator";
 
 const queryClient = new QueryClient();
 
@@ -57,8 +64,12 @@ const App = () => (
             <Route path="/factions" element={<Factions />} />
             <Route path="/missions" element={<Missions />} />
             <Route path="/lore" element={<Lore />} />
-            <Route path="/tools" element={<ComingSoon />} />
-            <Route path="/news" element={<ComingSoon />} />
+            <Route path="/tools/loadout" element={<LoadoutTool />} />
+            <Route path="/tools/crafting" element={<CraftingSimulator />} />
+            <Route path="/tools/refining" element={<RefiningSimulator />} />
+            <Route path="/news" element={<News />} />
+            <Route path="/news/:rsiId" element={<NewsDetail />} />
+            <Route path="/admin/news" element={<AdminRoute><NewsAdmin /></AdminRoute>} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />

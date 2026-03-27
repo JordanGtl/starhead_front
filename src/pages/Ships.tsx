@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Search, GitCompareArrows, SlidersHorizontal, Rocket, X, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import heroBg from "@/assets/hero-bg.jpg";
 import { fetchShips, manufacturers, roles, type Ship } from "@/data/ships";
 import ShipCard from "@/components/ShipCard";
 
@@ -68,44 +69,50 @@ const Ships = () => {
   };
 
   return (
-    <div className="container py-8">
-      {/* Hero header */}
-      <div className="relative mb-8 overflow-hidden rounded-xl border border-border bg-gradient-to-br from-card via-card to-secondary p-8">
-        <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="relative flex items-center justify-between">
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <Rocket className="h-5 w-5 text-primary" />
-              <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("ships.fleet")}</span>
-            </div>
-            <h1 className="font-display text-4xl font-bold text-foreground">{t("ships.title")}</h1>
-            <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-              {t("ships.description")}
-            </p>
-          </div>
-          <Link
-            to="/ships/compare"
-            className="hidden items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-5 py-2.5 text-sm font-semibold text-primary transition-all hover:bg-primary/20 hover:border-primary/50 sm:inline-flex"
-          >
-            <GitCompareArrows className="h-4 w-4" />
-            {t("ships.compare")}
-          </Link>
-        </div>
+    <div className="relative min-h-screen bg-background">
+      {/* Image de fond */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[20vh] overflow-hidden">
+        <img src={heroBg} alt="" aria-hidden="true" className="h-full w-full object-cover opacity-30" style={{ objectPosition: "50% 30%" }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/60 to-background" />
+      </div>
 
-        {/* Quick stats */}
-        <div className="relative mt-6 flex gap-6">
-          {[
-            { label: t("ships.statsShips"), value: allShips.length },
-            { label: t("ships.statsManufacturers"), value: new Set(allShips.map(s => s.manufacturer)).size },
-            { label: t("ships.statsRoles"), value: new Set(allShips.map(s => s.role)).size },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center">
-              <p className="font-display text-2xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{stat.label}</p>
+      {/* Header */}
+      <div className="relative z-10 flex min-h-[18vh] items-center">
+        <div className="container pb-2 pt-8">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-1 flex items-center gap-2">
+                <Rocket className="h-5 w-5 text-primary" />
+                <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("ships.fleet")}</span>
+              </div>
+              <h1 className="font-display text-4xl font-bold text-foreground">{t("ships.title")}</h1>
+              <p className="mt-2 max-w-lg text-sm text-muted-foreground">{t("ships.description")}</p>
+              {/* Quick stats */}
+              <div className="mt-4 flex gap-6">
+                {[
+                  { label: t("ships.statsShips"), value: allShips.length },
+                  { label: t("ships.statsManufacturers"), value: new Set(allShips.map(s => s.manufacturer)).size },
+                  { label: t("ships.statsRoles"), value: new Set(allShips.map(s => s.role)).size },
+                ].map((stat) => (
+                  <div key={stat.label} className="text-center">
+                    <p className="font-display text-2xl font-bold text-foreground">{stat.value}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+            <Link
+              to="/ships/compare"
+              className="hidden items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-5 py-2.5 text-sm font-semibold text-primary transition-all hover:bg-primary/20 hover:border-primary/50 sm:inline-flex"
+            >
+              <GitCompareArrows className="h-4 w-4" />
+              {t("ships.compare")}
+            </Link>
+          </div>
         </div>
       </div>
+
+      <div className="relative z-10 container pb-8 pt-0">
 
       {/* Search & filter bar */}
       <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -254,6 +261,7 @@ const Ships = () => {
           )}
         </>
       )}
+      </div>
     </div>
   );
 };

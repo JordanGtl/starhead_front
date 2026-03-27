@@ -3,6 +3,7 @@ import { Search, Shield, AlertTriangle, Scale, Lock, SlidersHorizontal, X, Users
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import heroBg from "@/assets/hero-bg.jpg";
+import bgImage from "@/assets/background-1.png";
 import { fetchFactions, type Faction } from "@/data/factions";
 
 // --- Static config maps ---
@@ -38,58 +39,68 @@ const reactionConfig: Record<string, { labelKey: string; dot: string }> = {
 
 const FactionCard = ({ f }: { f: Faction }) => {
   const { t } = useTranslation();
-  const cfg     = typeConfig[f.factionType]   ?? typeConfig.Unlawful;
+  const cfg      = typeConfig[f.factionType]       ?? typeConfig.Unlawful;
   const reaction = reactionConfig[f.defaultReaction] ?? reactionConfig.Neutral;
-  const Icon    = cfg.icon;
-  const iconCol = typeIconColor[f.factionType] ?? "text-primary";
-  const badge   = typeBadgeColor[f.factionType] ?? "bg-muted text-muted-foreground border-border";
+  const Icon     = cfg.icon;
+  const iconCol  = typeIconColor[f.factionType]    ?? "text-primary";
+  const badge    = typeBadgeColor[f.factionType]   ?? "bg-muted text-muted-foreground border-border";
   const displayName = f.name ?? f.ref;
 
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-border bg-card transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
-      <div className={`h-1 bg-gradient-to-r ${cfg.color}`} />
+    <div className="group flex overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-primary/50">
 
-      <div className={`flex items-center justify-between border-b border-border/50 bg-gradient-to-r ${cfg.color} px-4 py-2.5`}>
-        <div className="flex items-center gap-2">
-          <Icon className={`h-4 w-4 ${iconCol}`} />
-          <span className="text-xs font-semibold uppercase tracking-wider text-foreground/80">
-            {t(cfg.labelKey)}
-          </span>
+      {/* Panneau logo — même structure que Manufacturers */}
+      <div className="relative flex w-24 shrink-0 items-center justify-center border-r border-border overflow-hidden">
+        <img
+          src={bgImage}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover opacity-50"
+        />
+        <div className="absolute inset-0 bg-black/60" />
+        {/* Barre de couleur en haut selon le type */}
+        <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${cfg.color}`} />
+
+        <div className="relative z-10 flex items-center justify-center p-2">
+          {f.logo ? (
+            <img
+              src={f.logo}
+              alt={displayName}
+              className="max-h-16 w-16 object-contain"
+              onError={(e) => {
+                const img = e.target as HTMLImageElement;
+                img.style.display = "none";
+                img.nextElementSibling?.classList.remove("hidden");
+              }}
+            />
+          ) : null}
+          <Users className={`h-10 w-10 ${iconCol} opacity-60 ${f.logo ? "hidden" : ""}`} />
         </div>
-        {f.noLegalRights && (
-          <span className="text-[10px] font-medium text-red-400/80">{t("factions.noLegalRights")}</span>
-        )}
       </div>
 
-      <div className="p-4">
-        <div className="mb-3 flex items-start justify-between gap-2">
-          <div className="flex items-center gap-3 min-w-0">
-            {f.logo ? (
-              <img
-                src={f.logo}
-                alt={displayName}
-                className="h-10 w-10 shrink-0 rounded-md object-contain"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-            ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary">
-                <Users className="h-5 w-5 text-muted-foreground" />
-              </div>
-            )}
-            <div className="min-w-0">
-              <h3 className="font-display text-base font-bold text-foreground leading-tight truncate">{displayName}</h3>
-              <div className="mt-1 flex items-center gap-1.5">
-                <span className={`h-2 w-2 rounded-full ${reaction.dot}`} />
-                <span className="text-[11px] font-medium text-muted-foreground">{t(reaction.labelKey)}</span>
-              </div>
-            </div>
+      {/* Contenu */}
+      <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
+        <div>
+          <h3 className="font-display text-base font-semibold text-foreground transition-colors group-hover:text-primary line-clamp-1">
+            {displayName}
+          </h3>
+          <div className="mt-1 flex items-center gap-1.5">
+            <span className={`h-2 w-2 rounded-full ${reaction.dot}`} />
+            <span className="text-xs text-muted-foreground">{t(reaction.labelKey)}</span>
           </div>
-          <span className={`shrink-0 inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${badge}`}>
-            {t(cfg.labelKey)}
-          </span>
         </div>
 
-        <div className="mt-2 text-[10px] font-mono text-muted-foreground/50 truncate">{f.ref}</div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <span className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold ${badge}`}>
+            <Icon className="h-3 w-3" />
+            {t(cfg.labelKey)}
+          </span>
+          {f.noLegalRights && (
+            <span className="inline-flex rounded border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-400">
+              {t("factions.noLegalRights")}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ export interface Vehicle {
   cargo: number | null;
   hasWeapons: boolean;
   description: string | null;
+  image: string | null;
 }
 
 /** Cache synchrone utilisé par search.ts */
