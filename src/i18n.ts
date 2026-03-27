@@ -304,7 +304,7 @@ const resources = {
       components: {
         title: 'Composants',
         equipment: 'Équipement',
-        description: 'Explorez tous les composants disponibles pour équiper vos vaisseaux. Filtrez par type, grade et taille.',
+        description: 'Explorez tous les composants disponibles pour équiper vos vaisseaux.',
         searchPlaceholder: 'Rechercher un composant ou fabricant...',
         found: '{{count}} composant(s) trouvé(s)',
         noComponentFound: 'Aucun composant trouvé',
@@ -516,6 +516,10 @@ const resources = {
           materialsFor1: 'Matériaux pour 1 fabrication',
           totalMaterials: 'Matériaux totaux',
           progress: 'Progression collecte',
+        },
+        ccu: {
+          title: 'Planificateur CCU',
+          desc: 'Optimisez votre chaîne de Cross-Chassis Upgrades pour acquérir un vaisseau au meilleur prix.',
         },
         refining: {
           title: 'Simulateur de raffinage',
@@ -864,7 +868,7 @@ const resources = {
       components: {
         title: 'Components',
         equipment: 'Equipment',
-        description: 'Explore all available components to equip your ships. Filter by type, grade and size.',
+        description: 'Explore all available components to equip your ships.',
         searchPlaceholder: 'Search a component or manufacturer...',
         found: '{{count}} component(s) found',
         noComponentFound: 'No component found',
@@ -1076,6 +1080,10 @@ const resources = {
           materialsFor1: 'Materials for 1 craft',
           totalMaterials: 'Total materials',
           progress: 'Collection progress',
+        },
+        ccu: {
+          title: 'CCU Planner',
+          desc: 'Optimize your Cross-Chassis Upgrade chain to acquire a ship at the best price.',
         },
         refining: {
           title: 'Refining Simulator',

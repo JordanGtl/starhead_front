@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Gem, Radio, ScrollText } from "lucide-react";
+import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Gem, Radio, ScrollText, Route } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVersion } from "@/contexts/VersionContext";
@@ -76,6 +76,7 @@ const toolItems = [
   { labelKey: "tools.loadout.title",  path: "/tools/loadout",  icon: Settings2,    descKey: "tools.loadout.desc"  },
   { labelKey: "tools.crafting.title", path: "/tools/crafting", icon: FlaskConical, descKey: "tools.crafting.desc" },
   { labelKey: "tools.refining.title", path: "/tools/refining", icon: Gem,          descKey: "tools.refining.desc" },
+  { labelKey: "tools.ccu.title",      path: "/tools/ccu",      icon: Route,        descKey: "tools.ccu.desc"      },
 ];
 
 const Navbar = () => {
@@ -130,23 +131,23 @@ const Navbar = () => {
       className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl"
       onMouseLeave={() => setOpenMenu(null)}
     >
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container flex h-16 items-stretch justify-between">
 
         {/* Logo + Desktop nav */}
-        <div className="flex items-center gap-1">
-          <Link to="/" className="mr-10 flex shrink-0 items-center gap-2">
+        <div className="flex items-stretch">
+          <Link to="/" className="mr-10 flex shrink-0 self-center items-center gap-2">
             <img src={logo} alt="StarHead" className="h-8" />
           </Link>
 
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="hidden self-stretch items-stretch gap-0 md:flex">
 
           {/* Trigger Base de données */}
           <button
             onMouseEnter={() => setOpenMenu("db")}
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 font-display text-sm font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-4 font-display text-sm font-medium transition-colors ${
               dbActive || openMenu === "db"
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                ? "bg-primary/5 text-primary border-b-2 border-primary/30"
+                : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground border-b-2 border-transparent"
             }`}
           >
             <Database className="h-3.5 w-3.5" />
@@ -157,10 +158,10 @@ const Navbar = () => {
           {/* Trigger Outils */}
           <button
             onMouseEnter={() => setOpenMenu("tools")}
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 font-display text-sm font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-4 font-display text-sm font-medium transition-colors ${
               toolsActive || openMenu === "tools"
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                ? "bg-primary/5 text-primary border-b-2 border-primary/30"
+                : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground border-b-2 border-transparent"
             }`}
           >
             <Wrench className="h-3.5 w-3.5" />
@@ -174,10 +175,10 @@ const Navbar = () => {
               key={link.path}
               to={link.path}
               onMouseEnter={() => setOpenMenu(null)}
-              className={`rounded-md px-3 py-2 font-display text-sm font-medium transition-colors ${
+              className={`inline-flex items-center px-4 font-display text-sm font-medium transition-colors ${
                 location.pathname === link.path
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  ? "bg-primary/5 text-primary border-b-2 border-primary/30"
+                  : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground border-b-2 border-transparent"
               }`}
             >
               {t(link.labelKey)}
@@ -235,7 +236,7 @@ const Navbar = () => {
                           key={v.id}
                           onClick={() => { setSelectedVersion(v); setVersionOpen(false); }}
                           className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
-                            selectedVersion?.id === v.id ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary"
+                            selectedVersion?.id === v.id ? "bg-primary/5 text-primary" : "text-foreground hover:bg-secondary/40"
                           }`}
                         >
                           <span className="flex-1 font-mono text-xs">{v.label}</span>
@@ -252,7 +253,7 @@ const Navbar = () => {
                           key={v.id}
                           onClick={() => { setSelectedVersion(v); setVersionOpen(false); }}
                           className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
-                            selectedVersion?.id === v.id ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary"
+                            selectedVersion?.id === v.id ? "bg-primary/5 text-primary" : "text-foreground hover:bg-secondary/40"
                           }`}
                         >
                           <span className="flex-1 font-mono text-xs">{v.label}</span>
@@ -292,8 +293,8 @@ const Navbar = () => {
                       onClick={() => { i18n.changeLanguage(lang.code); setLangOpen(false); }}
                       className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors ${
                         i18n.language === lang.code
-                          ? "bg-primary/10 text-primary"
-                          : "text-foreground hover:bg-secondary"
+                          ? "bg-primary/5 text-primary"
+                          : "text-foreground hover:bg-secondary/40"
                       }`}
                     >
                       <span className="text-base leading-none">{lang.flag}</span>
@@ -335,7 +336,7 @@ const Navbar = () => {
                     <Link
                       to="/profile"
                       onClick={() => setUserOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary/40"
                     >
                       <User className="h-4 w-4 text-muted-foreground" />
                       Mon profil
@@ -346,7 +347,7 @@ const Navbar = () => {
                       <Link
                         to="/admin/users"
                         onClick={() => setUserOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary/40"
                       >
                         <Shield className="h-4 w-4 text-primary" />
                         {t("admin.title")}
@@ -391,7 +392,7 @@ const Navbar = () => {
 
       {/* ─── Mega menu Base de données ─────────────────────────────────────────── */}
       <div
-        className={`absolute left-0 right-0 top-full hidden md:block overflow-hidden border-b border-border bg-background/95 backdrop-blur-xl shadow-2xl transition-all duration-150 ${
+        className={`absolute left-0 right-0 top-full hidden md:block overflow-hidden border-b border-border bg-background shadow-2xl transition-all duration-150 ${
           openMenu === "db"
             ? "opacity-100 pointer-events-auto translate-y-0"
             : "opacity-0 pointer-events-none -translate-y-1"
@@ -419,11 +420,11 @@ const Navbar = () => {
                           key={item.path}
                           to={item.path}
                           className={`group flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors ${
-                            active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary"
+                            active ? "bg-primary/5 text-primary" : "text-foreground hover:bg-secondary/40"
                           }`}
                         >
                           <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
-                            active ? "border-primary/30 bg-primary/10" : "border-border bg-secondary"
+                            active ? "border-primary/30 bg-primary/5" : "border-border bg-secondary"
                           }`}>
                             <Icon className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                           </div>
@@ -470,7 +471,7 @@ const Navbar = () => {
 
       {/* ─── Mega menu Outils ──────────────────────────────────────────────────── */}
       <div
-        className={`absolute left-0 right-0 top-full hidden md:block overflow-hidden border-b border-border bg-background/95 backdrop-blur-xl shadow-2xl transition-all duration-150 ${
+        className={`absolute left-0 right-0 top-full hidden md:block overflow-hidden border-b border-border bg-background shadow-2xl transition-all duration-150 ${
           openMenu === "tools"
             ? "opacity-100 pointer-events-auto translate-y-0"
             : "opacity-0 pointer-events-none -translate-y-1"
@@ -489,11 +490,11 @@ const Navbar = () => {
                   key={item.path}
                   to={item.path}
                   className={`group flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors ${
-                    active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary"
+                    active ? "bg-primary/5 text-primary" : "text-foreground hover:bg-secondary/40"
                   }`}
                 >
                   <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
-                    active ? "border-primary/30 bg-primary/10" : "border-border bg-secondary"
+                    active ? "border-primary/30 bg-primary/5" : "border-border bg-secondary"
                   }`}>
                     <Icon className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                   </div>

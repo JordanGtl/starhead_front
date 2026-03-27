@@ -42,6 +42,7 @@ import Blueprints from "./pages/Blueprints";
 import LoadoutTool from "./pages/tools/LoadoutTool";
 import CraftingSimulator from "./pages/tools/CraftingSimulator";
 import RefiningSimulator from "./pages/tools/RefiningSimulator";
+import CcuPlanner from "./pages/tools/CcuPlanner";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const App = () => (
             <Route path="/tools/loadout" element={<LoadoutTool />} />
             <Route path="/tools/crafting" element={<CraftingSimulator />} />
             <Route path="/tools/refining" element={<RefiningSimulator />} />
+            <Route path="/tools/ccu" element={<CcuPlanner />} />
             <Route path="/news" element={<News />} />
             <Route path="/spectrum" element={<SpectrumTracker />} />
             <Route path="/spectrum/:id" element={<SpectrumPostDetail />} />

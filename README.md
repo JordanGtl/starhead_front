@@ -50,6 +50,47 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## Conventions de développement
+
+### En-tête de page (`PageHeader`)
+
+Toutes les pages de détail **doivent utiliser le composant `PageHeader`** situé dans `src/components/PageHeader.tsx`.
+
+Ce composant gère :
+- Le **breadcrumb** sticky collé sous la navbar (fond `bg-card/90`, `backdrop-blur`)
+- Le **hero pleine largeur** avec l'image de fond `hero-bg.jpg`, le gradient et le titre
+
+#### Utilisation
+
+```tsx
+import PageHeader from "@/components/PageHeader";
+import { MyIcon } from "lucide-react";
+
+<PageHeader
+  breadcrumb={[
+    { label: "Section", href: "/section", icon: MyIcon },
+    { label: "Sous-section", href: "/section?filter=foo" },
+    { label: "Titre de la page courante" },   // dernier élément = page courante (pas de lien)
+  ]}
+  title="Titre principal"
+  label="Libellé au-dessus du titre"          // optionnel
+  labelIcon={MyIcon}                          // optionnel
+  subtitle="Sous-titre ou métadonnées"        // optionnel
+/>
+```
+
+#### Props
+
+| Prop | Type | Requis | Description |
+|------|------|--------|-------------|
+| `breadcrumb` | `BreadcrumbItem[]` | ✅ | Fil d'ariane. Le dernier item est la page courante (sans `href`). |
+| `title` | `string` | ✅ | Titre h1 affiché dans le hero. |
+| `label` | `string` | — | Libellé en petit texte au-dessus du titre (ex: type, catégorie). |
+| `labelIcon` | `React.ElementType` | — | Icône Lucide affichée à gauche du label. |
+| `subtitle` | `string` | — | Sous-titre affiché sous le titre (ex: fabricant, rôle). |
+
+---
+
 ## What technologies are used for this project?
 
 This project is built with:
