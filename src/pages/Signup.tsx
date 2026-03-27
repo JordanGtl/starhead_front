@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
-import { UserPlus, Rocket, Shield, Crosshair } from "lucide-react";
+import { UserPlus } from "lucide-react";
+import heroBg from "@/assets/hero-bg.jpg";
 
 const Signup = () => {
   const { signup } = useAuth();
@@ -27,54 +28,43 @@ const Signup = () => {
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
       {/* Left panel — branding */}
-      <div className="hidden relative overflow-hidden bg-card lg:flex lg:w-1/2 flex-col justify-between p-12">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5" />
-        <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full bg-accent/5 blur-3xl" />
+      <div className="hidden relative overflow-hidden lg:flex lg:w-1/2 border-r border-border/40 shadow-[4px_0_32px_rgba(0,0,0,0.4)]">
+        {/* Background image */}
+        <img src={heroBg} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center opacity-20" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/55 to-background/90" />
 
-        <div className="relative z-10">
-          <h2 className="font-display text-4xl font-bold text-foreground">
-            {t("auth.joinTitle")}<br />
-            <span className="text-primary">StarHead</span>
-          </h2>
-          <p className="mt-4 max-w-md text-muted-foreground leading-relaxed">
-            {t("auth.signupBrandingDesc")}
+        {/* Content — aligné avec le container navbar (max-w = moitié du 1400px) */}
+        <div className="relative z-10 ml-auto flex w-full max-w-[700px] flex-col justify-between px-8 py-12">
+
+          {/* Top — welcome */}
+          <div>
+            <h2 className="font-display text-4xl font-bold text-foreground">
+              {t("auth.joinTitle")}<br />
+              <span className="text-primary">StarHead</span>
+            </h2>
+            <p className="mt-4 max-w-md text-sm text-muted-foreground leading-relaxed">
+              {t("auth.signupBrandingDesc")}
+            </p>
+          </div>
+
+          {/* Center — tagline */}
+          <div className="flex flex-col items-center text-center -mt-28">
+            <div className="mb-6 h-px w-12 bg-primary/40" />
+            <p className="font-display text-3xl font-bold leading-snug text-foreground/90">
+              Naviguez.<br />Combattez.<br />Survivez.
+            </p>
+            <div className="mt-6 h-px w-12 bg-primary/40" />
+            <p className="mt-6 max-w-xs text-xs uppercase tracking-widest text-muted-foreground/50">
+              La référence des pilotes de Star Citizen
+            </p>
+          </div>
+
+          {/* Bottom — copyright */}
+          <p className="text-xs text-muted-foreground/60">
+            {t("auth.copyright")}
           </p>
-        </div>
 
-        <div className="relative z-10 space-y-4">
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-background/50 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
-              <Rocket className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">{t("auth.feature1Title")}</p>
-              <p className="text-xs text-muted-foreground">{t("auth.feature1Desc")}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-background/50 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent/10">
-              <Crosshair className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">{t("auth.feature2Title")}</p>
-              <p className="text-xs text-muted-foreground">{t("auth.feature2Desc")}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-background/50 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
-              <Shield className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">{t("auth.feature3Title")}</p>
-              <p className="text-xs text-muted-foreground">{t("auth.feature3Desc")}</p>
-            </div>
-          </div>
         </div>
-
-        <p className="relative z-10 text-xs text-muted-foreground">
-          {t("auth.copyright")}
-        </p>
       </div>
 
       {/* Right panel — form */}
@@ -101,7 +91,7 @@ const Signup = () => {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Commander Shepard"
+                placeholder="Votre nom de pilote"
                 className="h-10 w-full rounded-md border border-border bg-secondary px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
@@ -112,7 +102,7 @@ const Signup = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="pilote@example.com"
+                placeholder="votre@email.com"
                 className="h-10 w-full rounded-md border border-border bg-secondary px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
@@ -124,7 +114,7 @@ const Signup = () => {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={t("auth.passwordMinLength")}
+                placeholder="••••••••"
                 className="h-10 w-full rounded-md border border-border bg-secondary px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>

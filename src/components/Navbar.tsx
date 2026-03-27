@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Globe, Shield, Settings2, FlaskConical, Gem } from "lucide-react";
+import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Gem, Radio } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVersion } from "@/contexts/VersionContext";
@@ -51,6 +51,21 @@ const dbItems = [
   },
 ];
 
+// ─── Helpers version ──────────────────────────────────────────────────────────
+
+/** Extrait "4.6" depuis "Alpha 4.6.0-LIVE.9627852" */
+function shortVersion(label: string): string {
+  const match = label.match(/(\d+\.\d+)/);
+  return match ? match[1] : label;
+}
+
+/** Détermine le canal : "LIVE" si isLive, sinon "PTU" */
+function versionChannel(label: string, isLive: boolean): "LIVE" | "PTU" {
+  if (isLive) return "LIVE";
+  if (label.toUpperCase().includes("LIVE")) return "LIVE";
+  return "PTU";
+}
+
 const toolItems = [
   { labelKey: "tools.loadout.title",  path: "/tools/loadout",  icon: Settings2,    descKey: "tools.loadout.desc"  },
   { labelKey: "tools.crafting.title", path: "/tools/crafting", icon: FlaskConical, descKey: "tools.crafting.desc" },
@@ -65,8 +80,10 @@ const Navbar = () => {
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [versionOpen, setVersionOpen]         = useState(false);
   const [langOpen, setLangOpen]               = useState(false);
+  const [userOpen, setUserOpen]               = useState(false);
   const versionRef                            = useRef<HTMLDivElement>(null);
   const langRef                               = useRef<HTMLDivElement>(null);
+  const userRef                               = useRef<HTMLDivElement>(null);
   const { user, isAuthenticated, logout }     = useAuth();
   const { versions, selectedVersion, setSelectedVersion } = useVersion();
   const { t, i18n } = useTranslation();
@@ -79,6 +96,7 @@ const Navbar = () => {
     setMobileOpen(false);
     setVersionOpen(false);
     setLangOpen(false);
+    setUserOpen(false);
   }, [location.pathname]);
 
   // Ferme les dropdowns sur clic extérieur
@@ -86,6 +104,7 @@ const Navbar = () => {
     const handler = (e: MouseEvent) => {
       if (versionRef.current && !versionRef.current.contains(e.target as Node)) setVersionOpen(false);
       if (langRef.current    && !langRef.current.contains(e.target as Node))    setLangOpen(false);
+      if (userRef.current    && !userRef.current.contains(e.target as Node))    setUserOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -95,8 +114,9 @@ const Navbar = () => {
   const toolsActive = toolItems.some((i) => location.pathname.startsWith(i.path));
 
   const topLinks = [
-    { labelKey: "nav.lore",  path: "/lore",  icon: BookOpen  },
-    { labelKey: "nav.news",  path: "/news",  icon: Newspaper },
+    { labelKey: "nav.lore",     path: "/lore",     icon: BookOpen  },
+    { labelKey: "nav.news",     path: "/news",     icon: Newspaper },
+    { labelKey: "nav.spectrum", path: "/spectrum", icon: Radio     },
   ];
 
   return (
@@ -106,12 +126,12 @@ const Navbar = () => {
     >
       <div className="container flex h-16 items-center justify-between">
 
-        {/* Logo */}
-        <Link to="/" className="flex shrink-0 items-center gap-2">
-          <img src={logo} alt="StarHead" className="h-8" />
-        </Link>
+        {/* Logo + Desktop nav */}
+        <div className="flex items-center gap-1">
+          <Link to="/" className="mr-10 flex shrink-0 items-center gap-2">
+            <img src={logo} alt="StarHead" className="h-8" />
+          </Link>
 
-        {/* Desktop nav */}
         <div className="hidden items-center gap-1 md:flex">
 
           {/* Trigger Base de données */}
@@ -158,26 +178,100 @@ const Navbar = () => {
             </Link>
           ))}
         </div>
+        </div>{/* end logo + nav */}
 
         {/* Right actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex h-full self-stretch items-stretch">
+
+          {/* Search */}
           <Link
             to="/search"
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="self-center mx-2 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <Search className="h-4 w-4" />
           </Link>
 
-          {/* Sélecteur de langue */}
-          <div ref={langRef} className="relative">
+          {/* Sélecteur de version — pleine hauteur, biseau */}
+          {versions.length > 0 && (
+            <div ref={versionRef} className="relative hidden self-stretch md:flex">
+              <button
+                onClick={() => setVersionOpen((v) => !v)}
+                className="flex h-full items-center gap-1.5 border-x border-border/50 bg-secondary/20 px-4 font-mono text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Tag className="h-3 w-3 shrink-0" />
+                  <span className="font-semibold text-foreground">
+                    {shortVersion(selectedVersion?.label ?? "")}
+                  </span>
+                  {selectedVersion && (
+                    <span className={`rounded-sm px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                      versionChannel(selectedVersion.label, selectedVersion.isLive) === "LIVE"
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-amber-500/20 text-amber-400"
+                    }`}>
+                      {versionChannel(selectedVersion.label, selectedVersion.isLive)}
+                    </span>
+                  )}
+                  <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${versionOpen ? "rotate-180" : ""}`} />
+                </span>
+              </button>
+
+              {versionOpen && (
+                <div className="absolute right-0 top-full z-50 mt-1.5 min-w-[240px] overflow-hidden rounded-lg border border-border bg-card shadow-xl">
+                  <p className="border-b border-border/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    {t("nav.versionPickerTitle")}
+                  </p>
+                  {versions.filter(v => versionChannel(v.label, v.isLive) === "LIVE").length > 0 && (
+                    <>
+                      <p className="px-3 pb-1 pt-2 text-[9px] font-bold uppercase tracking-widest text-emerald-400/70">Live</p>
+                      {versions.filter(v => versionChannel(v.label, v.isLive) === "LIVE").map(v => (
+                        <button
+                          key={v.id}
+                          onClick={() => { setSelectedVersion(v); setVersionOpen(false); }}
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                            selectedVersion?.id === v.id ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          <span className="flex-1 font-mono text-xs">{v.label}</span>
+                          {selectedVersion?.id === v.id && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {versions.filter(v => versionChannel(v.label, v.isLive) !== "LIVE").length > 0 && (
+                    <>
+                      <p className="border-t border-border/30 px-3 pb-1 pt-2 text-[9px] font-bold uppercase tracking-widest text-amber-400/70">PTU</p>
+                      {versions.filter(v => versionChannel(v.label, v.isLive) !== "LIVE").map(v => (
+                        <button
+                          key={v.id}
+                          onClick={() => { setSelectedVersion(v); setVersionOpen(false); }}
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                            selectedVersion?.id === v.id ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          <span className="flex-1 font-mono text-xs">{v.label}</span>
+                          {selectedVersion?.id === v.id && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sélecteur de langue — pleine hauteur, biseau */}
+          <div ref={langRef} className="relative self-stretch">
             <button
               onClick={() => setLangOpen((o) => !o)}
-              className="flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="flex h-full items-center gap-1.5 border-r border-border/50 bg-secondary/20 px-4 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               title={t("nav.language")}
             >
-              <span className="text-base leading-none">{currentLang.flag}</span>
-              <span className="hidden text-xs font-semibold uppercase sm:block">{currentLang.code}</span>
-              <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${langOpen ? "rotate-180" : ""}`} />
+              <span className="flex items-center gap-1.5">
+                <span className="text-base leading-none">{currentLang.flag}</span>
+                <span className="hidden text-xs font-semibold uppercase sm:block">{currentLang.code}</span>
+                <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${langOpen ? "rotate-180" : ""}`} />
+              </span>
             </button>
 
             {langOpen && (
@@ -208,89 +302,81 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Sélecteur de version */}
-          {versions.length > 0 && (
-            <div ref={versionRef} className="relative hidden md:block">
+          {/* Authentifié — dropdown profil */}
+          {isAuthenticated ? (
+            <div ref={userRef} className="relative hidden self-stretch md:flex">
               <button
-                onClick={() => setVersionOpen((v) => !v)}
-                className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-2.5 py-1.5 text-xs font-mono font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                onClick={() => setUserOpen((o) => !o)}
+                className="flex h-full items-center gap-2 border-r border-border/50 bg-secondary/20 px-4 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
-                <Tag className="h-3 w-3 shrink-0" />
-                <span className="max-w-[110px] truncate">{selectedVersion?.label ?? "—"}</span>
-                {selectedVersion?.isLive && (
-                  <span className="ml-0.5 rounded-sm bg-primary/20 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">live</span>
-                )}
-                <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${versionOpen ? "rotate-180" : ""}`} />
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary">
+                  <User className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-xs font-medium text-foreground">{user?.name}</span>
+                <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${userOpen ? "rotate-180" : ""}`} />
               </button>
 
-              {versionOpen && (
+              {userOpen && (
                 <div className="absolute right-0 top-full z-50 mt-1.5 min-w-[200px] overflow-hidden rounded-lg border border-border bg-card shadow-xl">
-                  <p className="border-b border-border/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                    {t("nav.versionPickerTitle")}
-                  </p>
+                  {/* En-tête */}
+                  <div className="border-b border-border/50 px-4 py-3">
+                    <p className="text-xs font-semibold text-foreground">{user?.name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+                  </div>
+
                   <div className="py-1">
-                    {versions.map((v) => (
-                      <button
-                        key={v.id}
-                        onClick={() => { setSelectedVersion(v); setVersionOpen(false); }}
-                        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
-                          selectedVersion?.id === v.id
-                            ? "bg-primary/10 text-primary"
-                            : "text-foreground hover:bg-secondary"
-                        }`}
+                    {/* Profil */}
+                    <Link
+                      to="/profile"
+                      onClick={() => setUserOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+                    >
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      Mon profil
+                    </Link>
+
+                    {/* Admin */}
+                    {user?.roles.includes("ROLE_ADMIN") && (
+                      <Link
+                        to="/admin/users"
+                        onClick={() => setUserOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
                       >
-                        <span className="flex-1 font-mono">{v.label}</span>
-                        {v.isLive && (
-                          <span className="rounded-sm bg-primary/20 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">live</span>
-                        )}
-                        {selectedVersion?.id === v.id && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                        )}
-                      </button>
-                    ))}
+                        <Shield className="h-4 w-4 text-primary" />
+                        {t("admin.title")}
+                      </Link>
+                    )}
+
+                    {/* Séparateur + déconnexion */}
+                    <div className="my-1 border-t border-border/50" />
+                    <button
+                      onClick={() => { logout(); setUserOpen(false); }}
+                      className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      {t("nav.logout")}
+                    </button>
                   </div>
                 </div>
               )}
             </div>
-          )}
-
-          {isAuthenticated ? (
-            <div className="hidden items-center gap-2 md:flex">
-              {user?.roles.includes("ROLE_ADMIN") && (
-                <Link
-                  to="/admin/news"
-                  className="flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-                  title={t("admin.title")}
-                >
-                  <Shield className="h-3.5 w-3.5" />
-                  Admin
-                </Link>
-              )}
-              <div className="flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5">
-                <User className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-medium text-foreground">{user?.name}</span>
-              </div>
-              <button
-                onClick={logout}
-                className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                title={t("nav.logoutTitle")}
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
           ) : (
+            /* Bouton connexion — pleine hauteur, biseau marqué */
             <Link
               to="/login"
-              className="hidden items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary md:inline-flex"
+              className="hidden self-stretch md:flex items-center bg-primary/10 border-r border-primary/30 px-6 font-display text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
             >
-              <LogIn className="h-3.5 w-3.5" />
-              {t("nav.login")}
+              <span className="flex items-center gap-1.5">
+                <LogIn className="h-3.5 w-3.5" />
+                {t("nav.login")}
+              </span>
             </Link>
           )}
 
+          {/* Mobile burger */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground md:hidden hover:bg-secondary"
+            className="flex h-9 w-9 self-center mx-2 items-center justify-center rounded-md text-muted-foreground md:hidden hover:bg-secondary"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -495,7 +581,7 @@ const Navbar = () => {
                 </div>
                 {user?.roles.includes("ROLE_ADMIN") && (
                   <Link
-                    to="/admin/news"
+                    to="/admin/users"
                     onClick={() => setMobileOpen(false)}
                     className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10"
                   >

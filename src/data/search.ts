@@ -5,8 +5,9 @@ import { vehicles } from "./vehicles";
 import { components } from "./components";
 import { manufacturers } from "./manufacturers";
 import { loreEntries } from "./lore";
+import { apiFetch } from "@/lib/api";
 
-export type SearchCategory = "all" | "ships" | "weapons" | "locations" | "vehicles" | "components" | "manufacturers" | "lore";
+export type SearchCategory = "all" | "ships" | "weapons" | "locations" | "vehicles" | "components" | "manufacturers" | "lore" | "factions";
 
 export interface SearchResult {
   id: string;
@@ -17,6 +18,20 @@ export interface SearchResult {
   description: string;
   link: string;
   meta: Record<string, string>;
+}
+
+/**
+ * Recherche via l'API backend — couvre tous les types en base de données.
+ * Retourne les résultats triés par pertinence (ordre défini par le backend).
+ */
+export async function apiSearch(
+  query: string,
+  category: SearchCategory = "all",
+  locale = "en",
+): Promise<SearchResult[]> {
+  if (query.trim().length < 2) return [];
+  const qs = new URLSearchParams({ q: query.trim(), cat: category, locale });
+  return apiFetch<SearchResult[]>(`/api/search?${qs.toString()}`);
 }
 
 export function globalSearch(query: string, category: SearchCategory = "all"): SearchResult[] {

@@ -7,6 +7,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useVersion } from "@/contexts/VersionContext";
 import { fetchWeapons, weaponTypeLabel, WEAPON_TYPE_LABELS, type Weapon } from "@/data/weapons";
+import heroBg from "@/assets/hero-bg.jpg";
 
 // ---------------------------------------------------------------------------
 // Couleurs & icônes par type API
@@ -173,65 +174,70 @@ const Weapons = () => {
   );
 
   return (
-    <div className="container py-8">
-      {/* Hero header */}
-      <div className="relative mb-8 overflow-hidden rounded-xl border border-border bg-gradient-to-br from-card via-card to-secondary p-8">
-        <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="relative">
-          <div className="mb-2 flex items-center gap-2">
-            <Swords className="h-5 w-5 text-primary" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-              {t("weapons.arsenal")}
-            </span>
+    <div className="relative min-h-screen bg-background">
+      {/* Image de fond */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[20vh] overflow-hidden">
+        <img src={heroBg} alt="" aria-hidden="true" className="h-full w-full object-cover opacity-30" style={{ objectPosition: '50% 30%' }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/60 to-background" />
+      </div>
+
+      {/* Header */}
+      <div className="relative z-10 flex min-h-[18vh] items-center">
+        <div className="container pb-2 pt-8">
+          <div className="mb-1 flex items-center gap-2">
+            <Crosshair className="h-5 w-5 text-primary" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("weapons.title")}</span>
           </div>
           <h1 className="font-display text-4xl font-bold text-foreground">{t("weapons.title")}</h1>
           <p className="mt-2 max-w-lg text-sm text-muted-foreground">{t("weapons.description")}</p>
-
-          {/* Quick type tabs */}
-          {!loading && (
-            <div className="mt-6 flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedType("")}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition-all ${
-                  !selectedType
-                    ? "border-primary/50 bg-primary/10 text-primary"
-                    : "border-border/50 bg-card/50 text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Swords className="h-4 w-4" />
-                <span className="font-medium">{t("common.all")}</span>
-                <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-bold">
-                  {allWeapons.length}
-                </span>
-              </button>
-
-              {mainTypes.map((mt) => {
-                const s = typeStyle(mt);
-                const { Icon } = s;
-                return (
-                  <button
-                    key={mt}
-                    onClick={() => setSelectedType(selectedType === mt ? "" : mt)}
-                    className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition-all ${
-                      selectedType === mt
-                        ? "border-primary/50 bg-primary/10 text-primary"
-                        : "border-border/50 bg-card/50 text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="font-medium">{weaponTypeLabel(mt)}</span>
-                    <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-bold">
-                      {typeCounts[mt]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Search + filters bar */}
+      <div className="relative z-10 container pb-8 pt-0">
+
+        {/* Quick type tabs */}
+        {!loading && (
+          <div className="mb-6 flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedType("")}
+              className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition-all ${
+                !selectedType
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "border-border/50 bg-card/50 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Swords className="h-4 w-4" />
+              <span className="font-medium">{t("common.all")}</span>
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-bold">
+                {allWeapons.length}
+              </span>
+            </button>
+
+            {mainTypes.map((mt) => {
+              const s = typeStyle(mt);
+              const { Icon } = s;
+              return (
+                <button
+                  key={mt}
+                  onClick={() => setSelectedType(selectedType === mt ? "" : mt)}
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition-all ${
+                    selectedType === mt
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-border/50 bg-card/50 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="font-medium">{weaponTypeLabel(mt)}</span>
+                  <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-bold">
+                    {typeCounts[mt]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Search + filters bar */}
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -346,6 +352,7 @@ const Weapons = () => {
           )}
         </>
       )}
+      </div>
     </div>
   );
 };

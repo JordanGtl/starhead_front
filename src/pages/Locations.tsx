@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { fetchLocations, type Location } from "@/data/locations";
 import { useVersion } from "@/contexts/VersionContext";
 import { Sun } from "lucide-react";
+import heroBg from "@/assets/hero-bg.jpg";
 
 const typeIcons: Record<Location["type"], typeof Globe> = {
   Planet: Globe,
@@ -131,24 +132,30 @@ const Locations = () => {
   }), [types, allLocations]);
 
   return (
-    <div className="container py-8">
-      <div className="relative mb-8 overflow-hidden rounded-xl border border-border bg-gradient-to-br from-card via-card to-secondary p-8">
-        <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="relative">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <Compass className="h-5 w-5 text-primary" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("locations.cartography")}</span>
-              </div>
-              <h1 className="font-display text-4xl font-bold text-foreground">{t("locations.title")}</h1>
-              <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-                {t("locations.description")}
-              </p>
-            </div>
-          </div>
+    <div className="relative min-h-screen bg-background">
+      {/* Image de fond */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[20vh] overflow-hidden">
+        <img src={heroBg} alt="" aria-hidden="true" className="h-full w-full object-cover opacity-30" style={{ objectPosition: '50% 30%' }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/60 to-background" />
+      </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
+      {/* Header */}
+      <div className="relative z-10 flex min-h-[18vh] items-center">
+        <div className="container pb-2 pt-8">
+          <div className="mb-1 flex items-center gap-2">
+            <Compass className="h-5 w-5 text-primary" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("locations.title")}</span>
+          </div>
+          <h1 className="font-display text-4xl font-bold text-foreground">{t("locations.title")}</h1>
+          <p className="mt-2 max-w-lg text-sm text-muted-foreground">{t("locations.description")}</p>
+        </div>
+      </div>
+
+      <div className="relative z-10 container pb-8 pt-0">
+
+        {/* Quick type tabs */}
+        {!loading && (
+          <div className="mb-6 flex flex-wrap gap-2">
             {typeStats.map(({ type, count, Icon, iconColor }) => (
               <button
                 key={type}
@@ -165,10 +172,9 @@ const Locations = () => {
               </button>
             ))}
           </div>
-        </div>
-      </div>
+        )}
 
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -280,6 +286,7 @@ const Locations = () => {
           )}
         </>
       )}
+      </div>
     </div>
   );
 };

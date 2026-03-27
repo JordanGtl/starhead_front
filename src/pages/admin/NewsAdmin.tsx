@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
+import AdminLayout from "@/components/AdminLayout";
 import {
   Newspaper, Search, RefreshCw, Trash2, Edit2, ExternalLink,
   CheckCircle2, XCircle, Loader2, AlertCircle, Plus, X,
@@ -13,6 +14,7 @@ import {
   type AdminNewsItem, type AdminNewsPayload, type NewsTranslation,
 } from "@/data/adminNews";
 import { resolveThumbnail } from "@/data/news";
+import heroBg from "@/assets/hero-bg.jpg";
 
 // ---------------------------------------------------------------------------
 // Constantes
@@ -661,36 +663,42 @@ const NewsAdmin = () => {
   const stats = data?.stats;
 
   return (
-    <div className="container py-8">
-      {/* Header */}
-      <div className="relative mb-8 overflow-hidden rounded-xl border border-border bg-gradient-to-br from-card via-card to-secondary p-8">
-        <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="relative">
-          <div className="mb-2 flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-              {t("admin.title")}
-            </span>
-          </div>
-          <h1 className="font-display text-3xl font-bold text-foreground">{t("admin.news.title")}</h1>
-          {/* Stats */}
-          {stats && (
-            <div className="mt-4 flex flex-wrap gap-4">
-              <div className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">{stats.total.toLocaleString()}</span> {t("admin.news.statArticles")}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <span className="font-semibold text-emerald-400">{stats.withContent.toLocaleString()}</span> {t("admin.news.statWithContent")}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <span className="font-semibold text-muted-foreground">{(stats.total - stats.withContent).toLocaleString()}</span> {t("admin.news.statWithoutContent")}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+    <AdminLayout>
+      <div className="relative min-h-screen bg-background">
 
-      {/* Sync message */}
+        {/* Image de fond */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[20vh] overflow-hidden">
+          <img src={heroBg} alt="" aria-hidden="true" className="h-full w-full object-cover opacity-30" style={{ objectPosition: "50% 30%" }} />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/60 to-background" />
+        </div>
+
+        {/* Header */}
+        <div className="relative z-10 flex min-h-[18vh] items-center">
+          <div className="container pb-2 pt-8">
+            <div className="mb-1 flex items-center gap-2">
+              <Newspaper className="h-5 w-5 text-primary" />
+              <span className="text-xs font-semibold uppercase tracking-widest text-primary">Administration</span>
+            </div>
+            <h1 className="font-display text-4xl font-bold text-foreground">{t("admin.news.title")}</h1>
+            {stats && (
+              <div className="mt-2 flex flex-wrap gap-4">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">{stats.total.toLocaleString()}</span> {t("admin.news.statArticles")}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-emerald-400">{stats.withContent.toLocaleString()}</span> {t("admin.news.statWithContent")}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-muted-foreground/60">{(stats.total - stats.withContent).toLocaleString()}</span> {t("admin.news.statWithoutContent")}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="relative z-10 container pb-8 pt-0">
+
+        {/* Sync message */}
       {syncMsg && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -963,7 +971,9 @@ const NewsAdmin = () => {
           onClose={() => setTranslateItem(null)}
         />
       )}
-    </div>
+        </div>
+      </div>
+    </AdminLayout>
   );
 };
 

@@ -18,6 +18,7 @@ import Locations from "./pages/Locations";
 import LocationDetail from "./pages/LocationDetail";
 import Vehicles from "./pages/Vehicles";
 import Components from "./pages/Components";
+import ComponentDetail from "./pages/ComponentDetail";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -28,10 +29,15 @@ import Missions from "./pages/Missions";
 import News from "./pages/News";
 import NewsDetail from "./pages/NewsDetail";
 import NewsAdmin from "./pages/admin/NewsAdmin";
+import UsersAdmin from "./pages/admin/UsersAdmin";
 import Lore from "./pages/Lore";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
+import SpectrumTracker from "./pages/SpectrumTracker";
+import SpectrumPostDetail from "./pages/SpectrumPostDetail";
 import AdminRoute from "./components/AdminRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Profile from "./pages/Profile";
 import LoadoutTool from "./pages/tools/LoadoutTool";
 import CraftingSimulator from "./pages/tools/CraftingSimulator";
 import RefiningSimulator from "./pages/tools/RefiningSimulator";
@@ -56,6 +62,7 @@ const App = () => (
             <Route path="/weapons" element={<Weapons />} />
             <Route path="/weapons/:id" element={<WeaponDetail />} />
             <Route path="/components" element={<Components />} />
+            <Route path="/components/:id" element={<ComponentDetail />} />
             <Route path="/locations" element={<Locations />} />
             <Route path="/locations/:id" element={<LocationDetail />} />
             <Route path="/vehicles" element={<Vehicles />} />
@@ -68,8 +75,12 @@ const App = () => (
             <Route path="/tools/crafting" element={<CraftingSimulator />} />
             <Route path="/tools/refining" element={<RefiningSimulator />} />
             <Route path="/news" element={<News />} />
+            <Route path="/spectrum" element={<SpectrumTracker />} />
+            <Route path="/spectrum/:id" element={<SpectrumPostDetail />} />
             <Route path="/news/:rsiId" element={<NewsDetail />} />
             <Route path="/admin/news" element={<AdminRoute><NewsAdmin /></AdminRoute>} />
+            <Route path="/admin/users" element={<AdminRoute><UsersAdmin /></AdminRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />

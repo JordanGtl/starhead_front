@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useMemo } from "react";
-import { Search, Rocket, Crosshair, Cpu, MapPin, Car, Building2, BookOpen, ArrowRight } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Search, Rocket, Crosshair, Cpu, MapPin, Car, Building2, BookOpen, Users, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { globalSearch, type SearchResult, type SearchCategory } from "@/data/search";
+import { apiSearch, type SearchResult, type SearchCategory } from "@/data/search";
 
 const CATEGORY_ICONS: Record<SearchCategory, React.ElementType> = {
   all: Search,
@@ -13,6 +13,7 @@ const CATEGORY_ICONS: Record<SearchCategory, React.ElementType> = {
   vehicles: Car,
   manufacturers: Building2,
   lore: BookOpen,
+  factions: Users,
 };
 
 const CATEGORY_COLORS: Record<SearchCategory, string> = {
@@ -24,6 +25,7 @@ const CATEGORY_COLORS: Record<SearchCategory, string> = {
   vehicles: "text-orange-400",
   manufacturers: "text-purple-400",
   lore: "text-cyan-400",
+  factions: "text-rose-400",
 };
 
 const MAX_SUGGESTIONS = 8;
@@ -33,19 +35,42 @@ interface LiveSearchBarProps {
 }
 
 const LiveSearchBar = ({ placeholder }: LiveSearchBarProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language?.split('-')[0] ?? 'en';
   const defaultPlaceholder = placeholder ?? t("search.livePlaceholder");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const suggestions = useMemo<SearchResult[]>(() => {
-    if (query.trim().length < 2) return [];
-    return globalSearch(query.trim()).slice(0, MAX_SUGGESTIONS);
-  }, [query]);
+  // Recherche debounce via API
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (query.trim().length < 2) {
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+    setLoading(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await apiSearch(query.trim(), "all", locale);
+        setSuggestions(results.slice(0, MAX_SUGGESTIONS));
+        setOpen(results.length > 0);
+      } catch {
+        setSuggestions([]);
+        setOpen(false);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, locale]);
 
   // Fermer si clic en dehors
   useEffect(() => {
@@ -58,9 +83,8 @@ const LiveSearchBar = ({ placeholder }: LiveSearchBarProps) => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Ouvrir dès qu'il y a des suggestions
+  // Reset index quand les suggestions changent
   useEffect(() => {
-    setOpen(suggestions.length > 0);
     setActiveIndex(-1);
   }, [suggestions]);
 
@@ -113,6 +137,9 @@ const LiveSearchBar = ({ placeholder }: LiveSearchBarProps) => {
             className="h-12 w-full rounded-lg border border-border bg-card/80 pl-12 pr-12 font-body text-sm text-foreground placeholder:text-muted-foreground backdrop-blur-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             autoComplete="off"
           />
+          {loading && (
+            <Loader2 className="absolute right-10 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+          )}
           {query && (
             <button
               type="submit"

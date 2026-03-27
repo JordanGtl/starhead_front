@@ -1,14 +1,16 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   Search, Shield, Zap, Thermometer, Gauge, Crosshair,
-  SlidersHorizontal, X, Cpu, Loader2, Fuel, Radar, Target,
+  SlidersHorizontal, X, Cpu, Loader2, Fuel, Radar, Target, ArrowRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { useVersion } from "@/contexts/VersionContext";
 import {
   fetchComponents, componentTypeLabel, gradeLabel,
   type ShipComponent,
 } from "@/data/components";
+import heroBg from "@/assets/hero-bg.jpg";
 
 // ---------------------------------------------------------------------------
 // Style par type API
@@ -52,7 +54,10 @@ const ComponentCard = ({ c }: { c: ShipComponent }) => {
   const name  = c.name ?? c.internalName;
 
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-border bg-card transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
+    <Link
+      to={`/components/${c.id}`}
+      className="group relative overflow-hidden rounded-lg border border-border bg-card transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_24px_hsl(var(--primary)/0.1)]"
+    >
       <div className={`h-1 bg-gradient-to-r ${s.bg}`} />
 
       <div className={`flex items-center justify-between border-b border-border/50 bg-gradient-to-r ${s.bg} px-4 py-2.5`}>
@@ -89,9 +94,10 @@ const ComponentCard = ({ c }: { c: ShipComponent }) => {
           <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
             <div className={`h-full rounded-full ${gc.bar} transition-all`} />
           </div>
+          <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
@@ -163,58 +169,64 @@ const Components = () => {
   );
 
   return (
-    <div className="container py-8">
-      {/* Hero header */}
-      <div className="relative mb-8 overflow-hidden rounded-xl border border-border bg-gradient-to-br from-card via-card to-secondary p-8">
-        <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="relative">
-          <div className="mb-2 flex items-center gap-2">
+    <div className="relative min-h-screen bg-background">
+      {/* Image de fond */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[20vh] overflow-hidden">
+        <img src={heroBg} alt="" aria-hidden="true" className="h-full w-full object-cover opacity-30" style={{ objectPosition: '50% 30%' }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/60 to-background" />
+      </div>
+
+      {/* Header */}
+      <div className="relative z-10 flex min-h-[18vh] items-center">
+        <div className="container pb-2 pt-8">
+          <div className="mb-1 flex items-center gap-2">
             <Cpu className="h-5 w-5 text-primary" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-              {t("components.equipment")}
-            </span>
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("components.title")}</span>
           </div>
           <h1 className="font-display text-4xl font-bold text-foreground">{t("components.title")}</h1>
           <p className="mt-2 max-w-lg text-sm text-muted-foreground">{t("components.description")}</p>
+        </div>
+      </div>
 
-          {!loading && (
-            <div className="mt-6 flex flex-wrap gap-2">
+      <div className="relative z-10 container pb-8 pt-0">
+
+        {/* Quick type tabs */}
+        {!loading && (
+          <div className="mb-6 flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedType("")}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all ${
+                !selectedType
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "border-border/50 bg-card/50 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+              }`}
+            >
+              <Cpu className="h-4 w-4" />
+              <span className="font-medium">{t("common.all")}</span>
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-bold">
+                {allComponents.length}
+              </span>
+            </button>
+
+            {typeStats.map(({ type, count, Icon, iconColor }) => (
               <button
-                onClick={() => setSelectedType("")}
+                key={type}
+                onClick={() => setSelectedType(selectedType === type ? "" : type)}
                 className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all ${
-                  !selectedType
+                  selectedType === type
                     ? "border-primary/50 bg-primary/10 text-primary"
                     : "border-border/50 bg-card/50 text-muted-foreground hover:border-primary/30 hover:text-foreground"
                 }`}
               >
-                <Cpu className="h-4 w-4" />
-                <span className="font-medium">{t("common.all")}</span>
-                <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-bold">
-                  {allComponents.length}
-                </span>
+                <Icon className={`h-4 w-4 ${selectedType === type ? "text-primary" : iconColor}`} />
+                <span className="font-medium">{componentTypeLabel(type)}</span>
+                <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-bold">{count}</span>
               </button>
+            ))}
+          </div>
+        )}
 
-              {typeStats.map(({ type, count, Icon, iconColor }) => (
-                <button
-                  key={type}
-                  onClick={() => setSelectedType(selectedType === type ? "" : type)}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all ${
-                    selectedType === type
-                      ? "border-primary/50 bg-primary/10 text-primary"
-                      : "border-border/50 bg-card/50 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                  }`}
-                >
-                  <Icon className={`h-4 w-4 ${selectedType === type ? "text-primary" : iconColor}`} />
-                  <span className="font-medium">{componentTypeLabel(type)}</span>
-                  <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-bold">{count}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Search + filters bar */}
+        {/* Search + filters bar */}
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -323,6 +335,7 @@ const Components = () => {
           )}
         </>
       )}
+      </div>
     </div>
   );
 };
