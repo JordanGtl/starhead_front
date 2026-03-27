@@ -38,6 +38,7 @@ import SpectrumPostDetail from "./pages/SpectrumPostDetail";
 import AdminRoute from "./components/AdminRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./pages/Profile";
+import Blueprints from "./pages/Blueprints";
 import LoadoutTool from "./pages/tools/LoadoutTool";
 import CraftingSimulator from "./pages/tools/CraftingSimulator";
 import RefiningSimulator from "./pages/tools/RefiningSimulator";
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="/factions" element={<Factions />} />
             <Route path="/missions" element={<Missions />} />
             <Route path="/lore" element={<Lore />} />
+            <Route path="/blueprints" element={<Blueprints />} />
             <Route path="/tools/loadout" element={<LoadoutTool />} />
             <Route path="/tools/crafting" element={<CraftingSimulator />} />
             <Route path="/tools/refining" element={<RefiningSimulator />} />

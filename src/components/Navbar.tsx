@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Gem, Radio } from "lucide-react";
+import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Gem, Radio, ScrollText } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVersion } from "@/contexts/VersionContext";
@@ -36,6 +36,12 @@ const dbItems = [
     ],
   },
   {
+    groupKey: "nav.groupCorp",
+    items: [
+      { labelKey: "nav.manufacturers", path: "/manufacturers", icon: Building2, descKey: "nav.descManufacturers" },
+    ],
+  },
+  {
     groupKey: "nav.groupUniverse",
     items: [
       { labelKey: "nav.locations",     path: "/locations",     icon: MapPin,    descKey: "nav.descLocations"  },
@@ -44,9 +50,9 @@ const dbItems = [
     ],
   },
   {
-    groupKey: "nav.groupCorp",
+    groupKey: "nav.groupCraft",
     items: [
-      { labelKey: "nav.manufacturers", path: "/manufacturers", icon: Building2, descKey: "nav.descManufacturers" },
+      { labelKey: "nav.blueprints", path: "/blueprints", icon: ScrollText, descKey: "nav.descBlueprints" },
     ],
   },
 ];
@@ -395,39 +401,69 @@ const Navbar = () => {
           <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             {t("nav.databaseSubtitle")}
           </p>
-          <div className="grid grid-cols-4 gap-x-6 gap-y-0">
-            {dbItems.map((group) => (
-              <div key={group.groupKey}>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-primary/70">
-                  {t(group.groupKey)}
-                </p>
-                <div className="flex flex-col gap-0.5">
-                  {group.items.map((item) => {
-                    const Icon = item.icon;
-                    const active = location.pathname.startsWith(item.path);
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`group flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors ${
-                          active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary"
-                        }`}
-                      >
-                        <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
-                          active ? "border-primary/30 bg-primary/10" : "border-border bg-secondary"
-                        }`}>
-                          <Icon className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium leading-tight">{t(item.labelKey)}</p>
-                          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground line-clamp-1">{t(item.descKey)}</p>
-                        </div>
-                      </Link>
-                    );
-                  })}
+          <div className="flex gap-6">
+
+            {/* Colonnes navigation */}
+            <div className="flex-1 grid grid-cols-3 gap-x-6 gap-y-5">
+              {dbItems.map((group) => (
+                <div key={group.groupKey}>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-primary/70">
+                    {t(group.groupKey)}
+                  </p>
+                  <div className="flex flex-col gap-0.5">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = location.pathname.startsWith(item.path);
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={`group flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors ${
+                            active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
+                            active ? "border-primary/30 bg-primary/10" : "border-border bg-secondary"
+                          }`}>
+                            <Icon className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium leading-tight">{t(item.labelKey)}</p>
+                            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground line-clamp-1">{t(item.descKey)}</p>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Séparateur */}
+            <div className="w-px shrink-0 bg-border/50" />
+
+            {/* Emplacement publicitaire */}
+            <div className="w-[220px] shrink-0">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-primary/70">
+                Partenaires
+              </p>
+              <div className="relative flex h-[140px] flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed border-border/60 bg-secondary/20 px-4 text-center">
+                {/* Coin décoratif */}
+                <div className="absolute left-0 top-0 h-4 w-4 border-l-2 border-t-2 border-primary/30 rounded-tl-lg" />
+                <div className="absolute bottom-0 right-0 h-4 w-4 border-b-2 border-r-2 border-primary/30 rounded-br-lg" />
+
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
+                  Espace publicitaire
+                </p>
+                <p className="mt-1 text-[10px] text-muted-foreground/30">
+                  220 × 140
+                </p>
+                <p className="mt-3 text-[9px] text-muted-foreground/25 uppercase tracking-wider">
+                  Votre annonce ici
+                </p>
               </div>
-            ))}
+            </div>
+
           </div>
         </div>
       </div>
