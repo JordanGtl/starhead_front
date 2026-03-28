@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+'use client';
+import Link from "next/link";
 import { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -14,7 +15,7 @@ const CategoryCard = ({ title, description, icon: Icon, count, href }: CategoryC
   const { t } = useTranslation();
   return (
     <Link
-      to={href}
+      href={href}
       className="group relative overflow-hidden rounded-lg border border-border bg-card p-6 card-hover"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />

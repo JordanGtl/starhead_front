@@ -109,6 +109,16 @@ export interface ShipComponent {
   shipWeapon?: ShipWeaponData | null;
   missile?: MissileData | null;
   missileRack?: MissileRackData | null;
+  personalArmor?: PersonalArmorData | null;
+}
+
+export interface PersonalArmorData {
+  impactForceResistance:    number | null;
+  minTempResistance:        number | null;
+  maxTempResistance:        number | null;
+  maxRadiationCapacity:     number | null;
+  radiationDissipationRate: number | null;
+  signatures:               Record<string, unknown>[] | null;
 }
 
 /** Types de composants de vaisseaux à inclure */
@@ -128,15 +138,28 @@ export type ComponentType = typeof COMPONENT_TYPES[number];
 
 /** Libellés d'affichage pour chaque type */
 export const COMPONENT_TYPE_LABELS: Record<string, string> = {
-  Shield:          'Shield',
-  PowerPlant:      'Power Plant',
-  Cooler:          'Cooler',
-  QuantumDrive:    'Quantum Drive',
-  Radar:           'Radar',
-  WeaponDefensive: 'Countermeasures',
-  FuelTank:        'Fuel Tank',
-  QuantumFuelTank: 'Quantum Tank',
-  FuelIntake:      'Fuel Intake',
+  // Composants vaisseau
+  Shield:               'Shield',
+  PowerPlant:           'Power Plant',
+  Cooler:               'Cooler',
+  QuantumDrive:         'Quantum Drive',
+  Radar:                'Radar',
+  WeaponDefensive:      'Countermeasures',
+  FuelTank:             'Fuel Tank',
+  QuantumFuelTank:      'Quantum Tank',
+  FuelIntake:           'Fuel Intake',
+  // Armures personnelles
+  Armor:                'Armure complète',
+  Char_Armor_Helmet:    'Casque',
+  Char_Armor_Torso:     'Torse',
+  Char_Armor_Arms:      'Bras',
+  Char_Armor_Legs:      'Jambes',
+  Char_Armor_Undersuit: 'Sous-combinaison',
+  Char_Armor_Backpack:  'Sac à dos',
+  // Consommables
+  FPS_Consumable:       'Consommable',
+  Medicine:             'Médicament',
+  Food:                 'Nourriture',
 };
 
 export const componentTypeLabel = (type: string | null): string =>

@@ -1,3 +1,4 @@
+'use client';
 import { getShipPriceHistory } from "@/data/price-history";
 import { useMemo, useState, useRef } from "react";
 

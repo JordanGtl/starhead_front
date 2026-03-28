@@ -1,10 +1,12 @@
-import { Link, useLocation } from "react-router-dom";
-import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Gem, Radio, ScrollText, Route } from "lucide-react";
+'use client';
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Gem, Radio, ScrollText, Route, PersonStanding, Sword } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVersion } from "@/contexts/VersionContext";
 import { useTranslation } from "react-i18next";
-import logo from "@/assets/logo.svg";
+
 
 /** Toutes les langues supportées — ajouter/retirer ici */
 const LANGUAGES = [
@@ -36,23 +38,31 @@ const dbItems = [
     ],
   },
   {
-    groupKey: "nav.groupCorp",
-    items: [
-      { labelKey: "nav.manufacturers", path: "/manufacturers", icon: Building2, descKey: "nav.descManufacturers" },
-    ],
-  },
-  {
     groupKey: "nav.groupUniverse",
     items: [
       { labelKey: "nav.locations",     path: "/locations",     icon: MapPin,    descKey: "nav.descLocations"  },
       { labelKey: "nav.factions",      path: "/factions",      icon: Users,     descKey: "nav.descFactions"   },
-      { labelKey: "nav.missions",      path: "/missions",      icon: Target,    descKey: "nav.descMissions"   },
+    ],
+  },
+  {
+    groupKey: "nav.groupPlayer",
+    items: [
+      { labelKey: "nav.playerArmor",   path: "/player/armor",  icon: Shield,    descKey: "nav.descPlayerArmor"   },
+      { labelKey: "nav.playerWeapons", path: "/player/weapons", icon: Sword,    descKey: "nav.descPlayerWeapons" },
+    ],
+  },
+  {
+    groupKey: "nav.groupCorp",
+    items: [
+      { labelKey: "nav.manufacturers", path: "/manufacturers", icon: Building2, descKey: "nav.descManufacturers" },
+      { labelKey: "nav.missions",      path: "/missions",      icon: Target,    descKey: "nav.descMissions"      },
     ],
   },
   {
     groupKey: "nav.groupCraft",
     items: [
-      { labelKey: "nav.blueprints", path: "/blueprints", icon: ScrollText, descKey: "nav.descBlueprints" },
+      { labelKey: "nav.blueprints",   path: "/blueprints",   icon: ScrollText, descKey: "nav.descBlueprints"   },
+      { labelKey: "nav.consumables", path: "/consumables", icon: FlaskConical, descKey: "nav.descConsumables" },
     ],
   },
 ];
@@ -80,7 +90,7 @@ const toolItems = [
 ];
 
 const Navbar = () => {
-  const location = useLocation();
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen]           = useState(false);
   const [openMenu, setOpenMenu]               = useState<"db" | "tools" | null>(null);
   const [mobileDbOpen, setMobileDbOpen]       = useState(false);
@@ -104,7 +114,7 @@ const Navbar = () => {
     setVersionOpen(false);
     setLangOpen(false);
     setUserOpen(false);
-  }, [location.pathname]);
+  }, [pathname]);
 
   // Ferme les dropdowns sur clic extérieur
   useEffect(() => {
@@ -117,8 +127,8 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const dbActive    = dbItems.some((g) => g.items.some((i) => location.pathname.startsWith(i.path)));
-  const toolsActive = toolItems.some((i) => location.pathname.startsWith(i.path));
+  const dbActive    = dbItems.some((g) => g.items.some((i) => pathname.startsWith(i.path)));
+  const toolsActive = toolItems.some((i) => pathname.startsWith(i.path));
 
   const topLinks = [
     { labelKey: "nav.lore",     path: "/lore",     icon: BookOpen  },
@@ -135,8 +145,8 @@ const Navbar = () => {
 
         {/* Logo + Desktop nav */}
         <div className="flex items-stretch">
-          <Link to="/" className="mr-10 flex shrink-0 self-center items-center gap-2">
-            <img src={logo} alt="StarHead" className="h-8" />
+          <Link href="/" className="mr-10 flex shrink-0 self-center items-center gap-2">
+            <img src="/logo.svg" alt="StarHead" className="h-8" />
           </Link>
 
         <div className="hidden self-stretch items-stretch gap-0 md:flex">
@@ -173,10 +183,10 @@ const Navbar = () => {
           {topLinks.map((link) => (
             <Link
               key={link.path}
-              to={link.path}
+              href={link.path}
               onMouseEnter={() => setOpenMenu(null)}
               className={`inline-flex items-center px-4 font-display text-sm font-medium transition-colors ${
-                location.pathname === link.path
+                pathname === link.path
                   ? "bg-primary/5 text-primary border-b-2 border-primary/30"
                   : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground border-b-2 border-transparent"
               }`}
@@ -192,7 +202,7 @@ const Navbar = () => {
 
           {/* Search */}
           <Link
-            to="/search"
+            href="/search"
             className="self-center mx-2 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <Search className="h-4 w-4" />
@@ -334,7 +344,7 @@ const Navbar = () => {
                   <div className="py-1">
                     {/* Profil */}
                     <Link
-                      to="/profile"
+                      href="/profile"
                       onClick={() => setUserOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary/40"
                     >
@@ -345,7 +355,7 @@ const Navbar = () => {
                     {/* Admin */}
                     {user?.roles.includes("ROLE_ADMIN") && (
                       <Link
-                        to="/admin/users"
+                        href="/admin/users"
                         onClick={() => setUserOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary/40"
                       >
@@ -370,7 +380,7 @@ const Navbar = () => {
           ) : (
             /* Bouton connexion — pleine hauteur, biseau marqué */
             <Link
-              to="/login"
+              href="/login"
               className="hidden self-stretch md:flex items-center bg-primary/10 border-r border-primary/30 px-6 font-display text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
             >
               <span className="flex items-center gap-1.5">
@@ -414,11 +424,11 @@ const Navbar = () => {
                   <div className="flex flex-col gap-0.5">
                     {group.items.map((item) => {
                       const Icon = item.icon;
-                      const active = location.pathname.startsWith(item.path);
+                      const active = pathname.startsWith(item.path);
                       return (
                         <Link
                           key={item.path}
-                          to={item.path}
+                          href={item.path}
                           className={`group flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors ${
                             active ? "bg-primary/5 text-primary" : "text-foreground hover:bg-secondary/40"
                           }`}
@@ -484,11 +494,11 @@ const Navbar = () => {
           <div className="grid grid-cols-4 gap-x-6 gap-y-0">
             {toolItems.map((item) => {
               const Icon = item.icon;
-              const active = location.pathname.startsWith(item.path);
+              const active = pathname.startsWith(item.path);
               return (
                 <Link
                   key={item.path}
-                  to={item.path}
+                  href={item.path}
                   className={`group flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors ${
                     active ? "bg-primary/5 text-primary" : "text-foreground hover:bg-secondary/40"
                   }`}
@@ -534,10 +544,10 @@ const Navbar = () => {
                 return (
                   <Link
                     key={item.path}
-                    to={item.path}
+                    href={item.path}
                     onClick={() => setMobileOpen(false)}
                     className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${
-                      location.pathname.startsWith(item.path)
+                      pathname.startsWith(item.path)
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
@@ -572,10 +582,10 @@ const Navbar = () => {
                 return (
                   <Link
                     key={item.path}
-                    to={item.path}
+                    href={item.path}
                     onClick={() => setMobileOpen(false)}
                     className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${
-                      location.pathname.startsWith(item.path)
+                      pathname.startsWith(item.path)
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
@@ -595,10 +605,10 @@ const Navbar = () => {
             return (
               <Link
                 key={link.path}
-                to={link.path}
+                href={link.path}
                 onClick={() => setMobileOpen(false)}
                 className={`mt-0.5 flex items-center gap-2 rounded-md px-3 py-2 font-display text-sm font-medium ${
-                  location.pathname === link.path
+                  pathname === link.path
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
@@ -618,7 +628,7 @@ const Navbar = () => {
                 </div>
                 {user?.roles.includes("ROLE_ADMIN") && (
                   <Link
-                    to="/admin/users"
+                    href="/admin/users"
                     onClick={() => setMobileOpen(false)}
                     className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10"
                   >
@@ -636,7 +646,7 @@ const Navbar = () => {
               </>
             ) : (
               <Link
-                to="/login"
+                href="/login"
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-primary"
               >

@@ -1,6 +1,7 @@
+'use client';
 import { useState, useRef, useEffect } from "react";
 import { Search, Rocket, Crosshair, Cpu, MapPin, Car, Building2, BookOpen, Users, ArrowRight, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { apiSearch, type SearchResult, type SearchCategory } from "@/data/search";
 
@@ -43,7 +44,7 @@ const LiveSearchBar = ({ placeholder }: LiveSearchBarProps) => {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,7 +102,7 @@ const LiveSearchBar = ({ placeholder }: LiveSearchBarProps) => {
       setActiveIndex(-1);
     } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault();
-      navigate(suggestions[activeIndex].link);
+      router.push(suggestions[activeIndex].link);
       setOpen(false);
       setQuery("");
     }
@@ -110,13 +111,13 @@ const LiveSearchBar = ({ placeholder }: LiveSearchBarProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
       setOpen(false);
     }
   };
 
   const handleSelect = (result: SearchResult) => {
-    navigate(result.link);
+    router.push(result.link);
     setOpen(false);
     setQuery("");
   };

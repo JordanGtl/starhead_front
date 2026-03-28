@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import heroBg from "@/assets/hero-bg.jpg";
+'use client';
+import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@ const PageHeader = ({ breadcrumb, title, label, labelIcon: LabelIcon, subtitle }
                 <span className="truncate max-w-xs text-foreground/60">{item.label}</span>
               ) : (
                 <>
-                  <Link to={item.href ?? "#"} className="hover:text-foreground transition-colors shrink-0">
+                  <Link href={item.href ?? "#"} className="hover:text-foreground transition-colors shrink-0">
                     {item.label}
                   </Link>
                   <span className="text-border shrink-0">/</span>
@@ -54,7 +54,7 @@ const PageHeader = ({ breadcrumb, title, label, labelIcon: LabelIcon, subtitle }
     {/* Hero pleine largeur */}
     <div className="relative overflow-hidden">
       <img
-        src={heroBg}
+        src="/hero-bg.jpg"
         alt=""
         aria-hidden
         className="absolute inset-0 h-full w-full object-cover opacity-15"

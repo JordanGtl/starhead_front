@@ -1,4 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+'use client';
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { Newspaper, Users, ChevronRight, Shield, ArrowLeft } from "lucide-react";
 
 const NAV = [
@@ -7,7 +9,7 @@ const NAV = [
 ];
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
-  const location = useLocation();
+  const pathname = usePathname();
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
@@ -26,11 +28,11 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         {/* Navigation */}
         <nav className="flex-1 px-2 py-3 space-y-0.5">
           {NAV.map(({ label, path, icon: Icon }) => {
-            const active = location.pathname === path;
+            const active = pathname === path;
             return (
               <Link
                 key={path}
-                to={path}
+                href={path}
                 className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                   active
                     ? "bg-primary/10 text-primary"
@@ -48,7 +50,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         {/* Footer */}
         <div className="border-t border-border px-2 py-3">
           <Link
-            to="/"
+            href="/"
             className="flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />

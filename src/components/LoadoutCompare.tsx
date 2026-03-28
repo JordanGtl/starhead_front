@@ -1,3 +1,4 @@
+'use client';
 import { Zap, Crosshair, Thermometer, Eye, X, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ShipComponent, ShipDetailed } from "@/data/ships-detailed";

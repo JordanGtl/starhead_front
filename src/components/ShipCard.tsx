@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+'use client';
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Ship } from "@/data/ships";
 import { Users, Globe, Rocket } from "lucide-react";
@@ -31,7 +32,7 @@ const ShipCard = ({ ship }: ShipCardProps) => {
   const { t } = useTranslation();
   return (
     <Link
-      to={`/ships/${ship.id}`}
+      href={`/ships/${ship.id}`}
       className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.12)]"
     >
       {/* Image area */}
