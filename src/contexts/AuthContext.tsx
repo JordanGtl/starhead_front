@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
-import { apiFetch, getToken, setToken, removeToken, API_URL } from "@/lib/api";
+import { apiFetch, API_URL } from "@/lib/api";
 import i18n from "@/i18n";
 
 export interface User {
@@ -7,6 +7,7 @@ export interface User {
   email: string;
   name: string;
   roles: string[];
+  emailVerifiedAt: string | null;
 }
 
 interface AuthContextType {
@@ -15,7 +16,7 @@ interface AuthContextType {
   authLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (email: string, name: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -25,31 +26,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Restaure la session depuis le token JWT stocké
+  // Restaure la session depuis le cookie
   useEffect(() => {
-    const token = getToken();
-    if (!token) { setAuthLoading(false); return; }
     apiFetch<User>('/api/auth/me')
       .then(setUser)
-      .catch(() => removeToken())
+      .catch(() => setUser(null))
       .finally(() => setAuthLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const { token } = await fetch(`${API_URL}/api/auth/login`, {
+      const loginRes = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-      }).then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.message ?? i18n.t('auth.incorrectCredentials'));
-        }
-        return res.json();
       });
 
-      setToken(token);
+      if (!loginRes.ok) {
+        const body = await loginRes.json().catch(() => ({}));
+        throw new Error(body.message ?? i18n.t('auth.incorrectCredentials'));
+      }
+
       const me = await apiFetch<User>('/api/auth/me');
       setUser(me);
       return { success: true };
@@ -70,8 +68,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [login]);
 
-  const logout = useCallback(() => {
-    removeToken();
+  const logout = useCallback(async () => {
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
     setUser(null);
   }, []);
 

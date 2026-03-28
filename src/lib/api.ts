@@ -1,19 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:11000';
 
-export const TOKEN_KEY = 'sh_token';
-
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function removeToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
-}
-
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -25,18 +11,44 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = getToken();
+// Refresh token mutex — avoid concurrent refresh calls
+let refreshPromise: Promise<void> | null = null;
 
+async function tryRefresh(): Promise<void> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = fetch(`${API_URL}/api/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+  }).then((res) => {
+    if (!res.ok) throw new Error('Refresh failed');
+  }).finally(() => {
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
+}
+
+export async function apiFetch<T>(path: string, options?: RequestInit, _retry = true): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });
+
+  // Access token expired — try to refresh then retry once
+  if (res.status === 401 && _retry && path !== '/api/auth/refresh') {
+    try {
+      await tryRefresh();
+      return apiFetch<T>(path, options, false);
+    } catch {
+      throw new ApiError(401, 'Session expired', {});
+    }
+  }
 
   if (!res.ok) {
     let message = `API error ${res.status}`;

@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import {
   User, Mail, Shield, KeyRound, Save, LogOut,
-  CheckCircle, AlertCircle, Loader2, Lock, Download, Trash2,
+  CheckCircle, AlertCircle, Loader2, Lock, Download, Trash2, MailCheck,
 } from "lucide-react";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -108,9 +108,32 @@ const Profile = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push("/");
+  };
+
+  // Vérification email
+  const [verifLoading, setVerifLoading] = useState(false);
+  const [verifAlert, setVerifAlert]     = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  const handleSendVerification = async () => {
+    setVerifLoading(true);
+    setVerifAlert(null);
+    try {
+      await apiFetch('/api/auth/send-verification', { method: 'POST' });
+      setVerifAlert({ type: 'success', msg: 'Email de vérification envoyé. Vérifiez votre boîte mail.' });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 429) {
+        const nextAllowed = e.body.next_allowed as string | undefined;
+        const next = nextAllowed ? new Date(nextAllowed).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+        setVerifAlert({ type: 'error', msg: `Veuillez patienter avant de renvoyer un email. Réessayez après ${next}.` });
+      } else {
+        setVerifAlert({ type: 'error', msg: "Impossible d'envoyer l'email de vérification." });
+      }
+    } finally {
+      setVerifLoading(false);
+    }
   };
 
   // Export données
@@ -152,7 +175,9 @@ const Profile = () => {
       setDeletePassword("");
       setShowDeleteConfirm(false);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 429) {
+      if (e instanceof ApiError && e.status === 403) {
+        setDeleteAlert({ type: "error", msg: "Vous devez vérifier votre adresse e-mail avant de pouvoir supprimer votre compte." });
+      } else if (e instanceof ApiError && e.status === 429) {
         const nextAllowed = e.body.next_allowed as string | undefined;
         const next = nextAllowed ? new Date(nextAllowed).toLocaleDateString('fr-FR') : '';
         setDeleteAlert({ type: "error", msg: `Vous avez déjà effectué une demande récemment. Réessayez après le ${next}.` });
@@ -201,6 +226,33 @@ const Profile = () => {
 
       {/* Content */}
       <div className="relative z-10 container pb-12 pt-0">
+
+        {/* Bandeau email non vérifié */}
+        {!user?.emailVerifiedAt && (
+          <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <MailCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-300">Adresse e-mail non vérifiée</p>
+                  <p className="text-xs text-amber-400/80">Vérifiez votre adresse e-mail pour accéder à toutes les fonctionnalités (ex : suppression de compte).</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-start gap-2 sm:items-end">
+                {verifAlert && <Alert type={verifAlert.type} message={verifAlert.msg} />}
+                <button
+                  onClick={handleSendVerification}
+                  disabled={verifLoading}
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/20 px-3 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
+                >
+                  {verifLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MailCheck className="h-3.5 w-3.5" />}
+                  Renvoyer l'email
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-2">
 
           {/* ── Informations ─────────────────────────────────────────────── */}
