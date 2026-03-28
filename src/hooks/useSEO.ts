@@ -103,21 +103,8 @@ export function useSEO({
     };
     setJsonLd(jsonLd);
 
-    // ── Cleanup : restore defaults on unmount ──────────────────────────────
-    return () => {
-      document.title = `${SITE_NAME} — Base de données Star Citizen`;
-      setMeta('meta[name="description"]',          DEFAULT_DESC);
-      setMeta('meta[name="robots"]',               "index,follow");
-      setMeta('meta[property="og:title"]',         `${SITE_NAME} — Base de données Star Citizen`);
-      setMeta('meta[property="og:description"]',   DEFAULT_DESC);
-      setMeta('meta[property="og:type"]',          "website");
-      setMeta('meta[property="og:image"]',         DEFAULT_IMAGE);
-      setMeta('meta[property="og:url"]',           null);
-      setMeta('meta[name="twitter:title"]',        `${SITE_NAME} — Base de données Star Citizen`);
-      setMeta('meta[name="twitter:description"]',  DEFAULT_DESC);
-      setMeta('meta[name="twitter:image"]',        DEFAULT_IMAGE);
-      setLink("canonical",                         null);
-      setJsonLd(undefined);
-    };
+    // Pas de cleanup : Next.js App Router gère les meta tags via generateMetadata
+    // à chaque navigation — supprimer manuellement les nœuds SSR provoquerait
+    // une erreur React "removeChild on null" lors du démontage.
   }, [fullTitle, description, canonicalURL, image, ogType, noindex, jsonLd]);
 }

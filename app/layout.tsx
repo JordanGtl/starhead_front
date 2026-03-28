@@ -28,6 +28,12 @@ export const metadata: Metadata = {
     ],
   },
   manifest: '/manifest.json',
+  themeColor: '#14181f',
+  alternates: {
+    types: {
+      'application/xml': 'https://star-head.sc/sitemap.xml',
+    },
+  },
 };
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
@@ -36,10 +42,6 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <head>
-        <meta name="theme-color" content="#14181f" />
-        <link rel="sitemap" type="application/xml" href="https://star-head.sc/sitemap.xml" />
-      </head>
       <body>
         {GTM_ID && (
           <>
