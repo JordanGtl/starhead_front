@@ -7,6 +7,8 @@ export interface Location {
   type: 'Planet' | 'Moon' | 'Station' | 'City' | 'Outpost' | 'Asteroid Belt' | 'Lagrange Point' | 'Star' | 'Rest Stop' | string | null;
   system: string | null;
   parent?: string | null;
+  body?: string | null;
+  navIcon?: string | null;
   atmosphere?: string | null;
   gravity?: string | null;
   description: string | null;
