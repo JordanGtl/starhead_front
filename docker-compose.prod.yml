@@ -4,7 +4,7 @@ services:
   front:
     image: starhead-front:${IMAGE_TAG:-latest}
     ports:
-      - "11200:3000"
+      - "127.0.0.1:11200:3000"
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.star-head.sc}
