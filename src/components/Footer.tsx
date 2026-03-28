@@ -1,9 +1,14 @@
 'use client';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
+import { Cookie } from 'lucide-react';
 
 const Footer = () => {
   const { t } = useTranslation();
+
+  const openCookieConsent = () => {
+    window.dispatchEvent(new CustomEvent('open-cookie-consent'));
+  };
 
   return (
     <footer className="border-t border-border py-8">
@@ -14,6 +19,13 @@ const Footer = () => {
           <Link href="/legal/politique-de-confidentialite" className="hover:text-foreground transition-colors">Politique de confidentialité</Link>
           <Link href="/legal/cgu" className="hover:text-foreground transition-colors">CGU</Link>
           <Link href="/legal/cookies" className="hover:text-foreground transition-colors">Cookies</Link>
+          <button
+            onClick={openCookieConsent}
+            className="flex items-center gap-1 hover:text-foreground transition-colors"
+          >
+            <Cookie className="h-3 w-3" />
+            Gérer les cookies
+          </button>
         </nav>
       </div>
       <div className="container mt-3 text-xs text-muted-foreground/60 sm:text-left">
