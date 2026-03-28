@@ -4,8 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowLeft, ExternalLink, ThumbsUp, MessageSquare, Pin,
-  Radio, Loader2, AlertCircle, Calendar,
+  ArrowLeft, ExternalLink, Radio, Loader2, AlertCircle, Calendar,
 } from "lucide-react";
 import {
   fetchSpectrumPost,
@@ -163,11 +162,6 @@ const SpectrumPostDetail = () => {
                     {post.category}
                   </span>
                 )}
-                {post.isPinned && (
-                  <span className="flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-400">
-                    <Pin className="h-2.5 w-2.5" /> Épinglé
-                  </span>
-                )}
                 {/* Badge de langue */}
                 <span className={`rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                   post.locale === 'en'
@@ -214,14 +208,6 @@ const SpectrumPostDetail = () => {
                 <span className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" />
                   {formatDate(post.postedAt)}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <ThumbsUp className="h-3.5 w-3.5" />
-                  {post.voteCount.toLocaleString()} votes
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  {post.repliesCount.toLocaleString()} réponses
                 </span>
                 <a
                   href={post.spectrumUrl}

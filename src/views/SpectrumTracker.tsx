@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Search, Pin, MessageSquare, ThumbsUp, ExternalLink, Radio, X, RefreshCw, Loader2 } from "lucide-react";
+import { Search, ExternalLink, Radio, X, RefreshCw, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import {
@@ -41,14 +41,6 @@ const PostCard = ({ post }: { post: SpectrumPost }) => {
               <span>{post.channel ?? post.forum}</span>
               <span className="text-border">·</span>
               <span>{formatRelative(post.postedAt)}</span>
-              {post.isPinned && (
-                <>
-                  <span className="text-border">·</span>
-                  <span className="flex items-center gap-0.5 text-amber-400">
-                    <Pin className="h-2.5 w-2.5" /> Épinglé
-                  </span>
-                </>
-              )}
             </div>
           </div>
         </div>
@@ -72,17 +64,7 @@ const PostCard = ({ post }: { post: SpectrumPost }) => {
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-1">
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <ThumbsUp className="h-3 w-3" />
-            {post.voteCount.toLocaleString()}
-          </span>
-          <span className="flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" />
-            {post.repliesCount.toLocaleString()}
-          </span>
-        </div>
+      <div className="flex items-center justify-end pt-1">
         <a
           href={post.spectrumUrl}
           target="_blank"
@@ -140,7 +122,6 @@ const SpectrumTracker = () => {
   const [query, setQuery]           = useState("");
   const [activeCategory, setActiveCat] = useState<string>("");
   const [activeRole, setActiveRole] = useState<string>("");
-  const [pinnedOnly, setPinnedOnly] = useState(false);
   const [page, setPage]             = useState(1);
 
   // Debounce search
@@ -156,7 +137,6 @@ const SpectrumTracker = () => {
         search:   query || undefined,
         category: activeCategory || undefined,
         role:     activeRole || undefined,
-        pinned:   pinnedOnly || undefined,
         locale,
       });
       setPosts(prev => append ? [...prev, ...result.items] : result.items);
@@ -168,7 +148,7 @@ const SpectrumTracker = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [query, activeCategory, activeRole, pinnedOnly, locale]);
+  }, [query, activeCategory, activeRole, locale]);
 
   // Charge les méta (catégories + auteurs) une seule fois
   useEffect(() => {
@@ -182,7 +162,7 @@ const SpectrumTracker = () => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => load(1, false), query ? 350 : 0);
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
-  }, [query, activeCategory, activeRole, pinnedOnly, locale]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [query, activeCategory, activeRole, locale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = () => {
     const next = page + 1;
@@ -192,22 +172,18 @@ const SpectrumTracker = () => {
 
   const refresh = () => { setPage(1); load(1, false); };
 
-  const hasFilters = !!(query || activeCategory || activeRole || pinnedOnly);
+  const hasFilters = !!(query || activeCategory || activeRole);
 
   const clearFilters = () => {
     setQuery("");
     setActiveCat("");
     setActiveRole("");
-    setPinnedOnly(false);
   };
 
   // Rôles distincts issus des auteurs
   const distinctRoles = Array.from(
     new Set(authors.flatMap(a => a.roles))
   ).sort();
-
-  const pinned    = posts.filter(p => p.isPinned);
-  const unpinned  = posts.filter(p => !p.isPinned);
 
   return (
     <div className="relative min-h-screen bg-background">
@@ -261,19 +237,6 @@ const SpectrumTracker = () => {
                 className="h-9 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20"
               />
             </div>
-
-            {/* Épinglés */}
-            <button
-              onClick={() => setPinnedOnly(v => !v)}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all ${
-                pinnedOnly
-                  ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
-                  : "border-border/50 bg-card/40 text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Pin className="h-3.5 w-3.5" />
-              {t("spectrum.pinnedOnly")}
-            </button>
 
             {/* Catégories */}
             {categories.length > 0 && (
@@ -367,22 +330,8 @@ const SpectrumTracker = () => {
 
             {!loading && (
               <>
-                {/* Épinglés */}
-                {pinned.length > 0 && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Pin className="h-3 w-3 text-amber-400" />
-                      <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-400/70">
-                        {t("spectrum.pinned")}
-                      </span>
-                    </div>
-                    {pinned.map(post => <PostCard key={post.id} post={post} />)}
-                    {unpinned.length > 0 && <div className="my-1 border-t border-border/30" />}
-                  </>
-                )}
-
-                {/* Feed principal */}
-                {unpinned.map(post => <PostCard key={post.id} post={post} />)}
+                {/* Feed principal — du plus récent au plus ancien */}
+                {posts.map(post => <PostCard key={post.id} post={post} />)}
 
                 {/* Empty state */}
                 {posts.length === 0 && !error && (
