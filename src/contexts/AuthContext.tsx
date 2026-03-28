@@ -12,6 +12,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  authLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (email: string, name: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
@@ -22,14 +23,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // Restaure la session depuis le token JWT stocké
   useEffect(() => {
     const token = getToken();
-    if (!token) return;
+    if (!token) { setAuthLoading(false); return; }
     apiFetch<User>('/api/auth/me')
       .then(setUser)
-      .catch(() => removeToken());
+      .catch(() => removeToken())
+      .finally(() => setAuthLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -78,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, signup, logout, resetPassword }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, authLoading, login, signup, logout, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

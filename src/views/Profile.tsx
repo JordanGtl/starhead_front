@@ -1,12 +1,12 @@
 'use client';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import {
   User, Mail, Shield, KeyRound, Save, LogOut,
-  CheckCircle, AlertCircle, Loader2, Lock,
+  CheckCircle, AlertCircle, Loader2, Lock, Download, Trash2,
 } from "lucide-react";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -41,10 +41,16 @@ const Alert = ({ type, message }: { type: "success" | "error"; message: string }
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 const Profile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated, authLoading } = useAuth();
   const { t } = useTranslation();
   useSEO({ title: "Mon profil", noindex: true });
   const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   // Infos
   const [name, setName]         = useState(user?.name ?? "");
@@ -107,7 +113,60 @@ const Profile = () => {
     router.push("/");
   };
 
+  // Export données
+  const [exportLoading, setExportLoading] = useState(false);
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      const data = await apiFetch<object>("/api/auth/export");
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "star-head-data.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silently ignore
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // Suppression compte
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteLoading, setDeleteLoading]   = useState(false);
+  const [deleteAlert, setDeleteAlert]       = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleRequestDeletion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDeleteLoading(true);
+    setDeleteAlert(null);
+    try {
+      await apiFetch("/api/auth/account/request-deletion", {
+        method: "POST",
+        body: JSON.stringify({ password: deletePassword }),
+      });
+      setDeleteAlert({ type: "success", msg: "Un email de confirmation a été envoyé à votre adresse. Cliquez sur le lien pour confirmer la suppression." });
+      setDeletePassword("");
+      setShowDeleteConfirm(false);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 429) {
+        const nextAllowed = e.body.next_allowed as string | undefined;
+        const next = nextAllowed ? new Date(nextAllowed).toLocaleDateString('fr-FR') : '';
+        setDeleteAlert({ type: "error", msg: `Vous avez déjà effectué une demande récemment. Réessayez après le ${next}.` });
+      } else {
+        setDeleteAlert({ type: "error", msg: "Mot de passe incorrect." });
+      }
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const isAdmin = user?.roles.includes("ROLE_ADMIN");
+
+  if (authLoading || !isAuthenticated) return null;
 
   return (
     <div className="relative min-h-screen bg-background">
@@ -246,24 +305,92 @@ const Profile = () => {
             </form>
           </Section>
 
+          {/* ── Données personnelles ─────────────────────────────────────── */}
+          <Section title="Mes données personnelles" icon={Download}>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Télécharger mes données</p>
+                  <p className="text-xs text-muted-foreground">Exportez toutes vos données au format JSON.</p>
+                </div>
+                <button
+                  onClick={handleExport}
+                  disabled={exportLoading}
+                  className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-secondary px-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary/80 disabled:opacity-50"
+                >
+                  {exportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Télécharger
+                </button>
+              </div>
+            </div>
+          </Section>
+
           {/* ── Zone danger ──────────────────────────────────────────────── */}
-          <div className="rounded-xl border border-destructive/20 bg-destructive/5 lg:col-span-2">
+          <div className="rounded-xl border border-destructive/20 bg-destructive/5">
             <div className="flex items-center gap-2.5 border-b border-destructive/20 px-6 py-4">
               <LogOut className="h-4 w-4 text-destructive" />
-              <h2 className="font-display text-sm font-semibold text-foreground">Session</h2>
+              <h2 className="font-display text-sm font-semibold text-foreground">Zone de danger</h2>
             </div>
-            <div className="flex items-center justify-between px-6 py-5">
-              <div>
-                <p className="text-sm font-medium text-foreground">Se déconnecter</p>
-                <p className="text-xs text-muted-foreground">Vous serez redirigé vers la page d'accueil.</p>
+            <div className="divide-y divide-destructive/10">
+
+              {/* Déconnexion */}
+              <div className="flex items-center justify-between px-6 py-5">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Se déconnecter</p>
+                  <p className="text-xs text-muted-foreground">Vous serez redirigé vers la page d'accueil.</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex h-9 items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Se déconnecter
+                </button>
               </div>
-              <button
-                onClick={handleLogout}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
-              >
-                <LogOut className="h-4 w-4" />
-                Se déconnecter
-              </button>
+
+              {/* Suppression compte */}
+              <div className="px-6 py-5">
+                {deleteAlert && <div className="mb-3"><Alert type={deleteAlert.type} message={deleteAlert.msg} /></div>}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Supprimer mon compte</p>
+                    <p className="text-xs text-muted-foreground">Action irréversible. Toutes vos données seront effacées.</p>
+                  </div>
+                  <button
+                    onClick={() => setShowDeleteConfirm(v => !v)}
+                    className="inline-flex h-9 items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Supprimer
+                  </button>
+                </div>
+
+                {showDeleteConfirm && (
+                  <form onSubmit={handleRequestDeletion} className="mt-4 space-y-3">
+                    <span />}
+                    <p className="text-xs text-muted-foreground">Confirmez votre mot de passe. Un email de validation vous sera envoyé.</p>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="password"
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        placeholder="Votre mot de passe"
+                        className="h-10 w-full rounded-md border border-destructive/40 bg-background pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-destructive focus:outline-none focus:ring-1 focus:ring-destructive"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={deleteLoading || !deletePassword}
+                      className="inline-flex h-9 items-center gap-2 rounded-md bg-destructive px-4 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                    >
+                      {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      Envoyer l'email de confirmation
+                    </button>
+                  </form>
+                )}
+              </div>
+
             </div>
           </div>
 
