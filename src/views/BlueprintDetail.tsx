@@ -17,27 +17,73 @@ import { useSEO } from "@/hooks/useSEO";
 // Types
 // ---------------------------------------------------------------------------
 
+interface PropertyModifier {
+  propertyRef:          string;
+  propertyName:         string | null;
+  propertyUnit:         string | null;
+  propertyInternal:     string | null;
+  qualityMin:           number;
+  qualityMax:           number;
+  modifierAtMinQuality: number;
+  modifierAtMaxQuality: number;
+}
+
+interface SlotOption {
+  ref:      string;
+  name:     string | null;
+  quantity: number | null;
+  unit:     string | null;
+}
+
+interface CraftingSlot {
+  key:               string;
+  label:             string;
+  chooseCount:       number;
+  options:           SlotOption[];
+  propertyModifiers: PropertyModifier[];
+}
+
 interface CostNode {
-  type:              "select" | "resource";
+  type:               "select" | "resource" | "item" | "ref";
   // select
-  slot?:             string | null;
-  debugName?:        string | null;
-  chooseCount?:      number | null;
-  options?:          CostNode[] | null;
-  // resource
-  ref?:              string | null;
-  name?:             string | null;
-  quantity?:         number | null;
-  unit?:             string | null;
-  minQuality?:       number | null;
+  slot?:              string | null;
+  debugName?:         string | null;
+  chooseCount?:       number | null;
+  options?:           CostNode[] | null;
+  propertyModifiers?: PropertyModifier[] | null;
+  // resource / item
+  ref?:               string | null;
+  name?:              string | null;
+  quantity?:          number | null;
+  unit?:              string | null;
+  minQuality?:        number | null;
+  // ref (scaling)
+  multiplier?:        number | null;
 }
 
 interface Tier {
   tier:          number;
   craftTime:     { days: number; hours: number; minutes: number; seconds: number; totalSeconds: number } | null;
   mandatoryCost: CostNode | null;
-  optionalCosts: CostNode | null;
+  optionalCosts: CostNode[] | null;   // array of cost entries
   research:      unknown;
+}
+
+interface Ingredient {
+  ref:          string;
+  itemId:       number | null;
+  name:         string | null;
+  internalName: string | null;
+  type:         string | null;
+  subType:      string | null;
+  manufacturer: string | null;
+  size:         number | null;
+  grade:        number | null;
+  quantity:     number | null;
+  unit:         string | null;
+  minQuality:   number | null;
+  tier:         number;
+  isMandatory:  boolean;
 }
 
 interface BlueprintDetail {
@@ -57,10 +103,11 @@ interface BlueprintDetail {
   file:               string | null;
   tiers:              Tier[] | null;
   rewardPools:        string[] | null;
+  ingredients:        Ingredient[];
 }
 
 interface ResolvedItem {
-  id:   number;
+  id:   number | null;
   ref:  string;
   name: string | null;
   type: string | null;
@@ -113,10 +160,36 @@ const fmtDebugName = (s: string | null | undefined): string => {
   return s.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-/** Recursively collect all resource refs from a cost tree */
+/** Extract all select nodes that carry propertyModifiers, including their resource options */
+function extractSlots(node: CostNode | null, acc: CraftingSlot[], path = ""): void {
+  if (!node) return;
+  if (node.type === "select") {
+    const label = node.slot ?? node.debugName ?? "Slot";
+    const key   = `${path}/${label}`;
+    if (node.propertyModifiers?.length) {
+      const options: SlotOption[] = (node.options ?? [])
+        .filter(o => o.type === "resource" || o.type === "item")
+        .map(o => ({ ref: o.ref ?? "", name: o.name ?? null, quantity: o.quantity ?? null, unit: o.unit ?? null }));
+      if (options.length > 0) {
+        acc.push({ key, label, chooseCount: node.chooseCount ?? 1, options, propertyModifiers: node.propertyModifiers });
+      }
+    }
+    node.options?.forEach((child, i) => extractSlots(child, acc, `${key}[${i}]`));
+  }
+}
+
+/** Linear interpolation of modifier at a given quality */
+function computeModifier(pm: PropertyModifier, quality: number): number {
+  const range = pm.qualityMax - pm.qualityMin;
+  if (range === 0) return pm.modifierAtMinQuality;
+  const t = Math.max(0, Math.min(1, (quality - pm.qualityMin) / range));
+  return pm.modifierAtMinQuality + t * (pm.modifierAtMaxQuality - pm.modifierAtMinQuality);
+}
+
+/** Recursively collect all ingredient refs from a cost tree */
 function collectRefs(node: CostNode | null, acc: Set<string>): void {
   if (!node) return;
-  if (node.type === "resource" && node.ref) {
+  if ((node.type === "resource" || node.type === "item") && node.ref) {
     acc.add(node.ref);
   } else if (node.options) {
     for (const child of node.options) collectRefs(child, acc);
@@ -134,21 +207,37 @@ const ResourceNode = ({
   node: CostNode;
   nameMap: Map<string, ResolvedItem>;
 }) => {
+  // "ref" = scaling marker from previous tier — no ingredient data
+  if (node.type === "ref") {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-dashed border-border/30 bg-background/40 px-3 py-1.5">
+        <span className="text-[11px] italic text-muted-foreground/50">
+          Basé sur le tier précédent{node.multiplier != null ? ` ×${node.multiplier}` : ""}
+        </span>
+      </div>
+    );
+  }
+
   const resolved = node.ref ? nameMap.get(node.ref) : undefined;
-  const name     = resolved?.name ?? null;
-  // Fallback: if name is still a UUID or null, show internalName style
+  const name     = resolved?.name ?? node.name ?? null;
   const isRaw    = !name;
   const label    = name ?? (node.ref ? node.ref.slice(0, 8) + "…" : "?");
-  const itemPath = resolved ? `/components/${resolved.id}` : null;
+  const itemPath = resolved?.id != null ? `/components/${resolved.id}` : null;
+  const isConsumable = node.type === "item";
 
   const inner = (
     <div className="flex items-center justify-between gap-3 rounded-md border border-border/40 bg-background/60 px-3 py-2 group/res">
       <div className="flex items-center gap-2 min-w-0">
-        <Box className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+        <Box className={`h-3.5 w-3.5 shrink-0 ${isConsumable ? "text-yellow-500/60" : "text-primary/60"}`} />
         <span className={`text-xs truncate ${isRaw ? "font-mono text-muted-foreground/60" : "font-medium text-foreground group-hover/res:text-primary transition-colors"}`}>
           {label}
         </span>
-        {resolved?.type && (
+        {isConsumable && (
+          <span className="shrink-0 rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-400/70 border border-yellow-500/20">
+            item
+          </span>
+        )}
+        {resolved?.type && !isConsumable && (
           <span className="shrink-0 rounded bg-card px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/60 border border-border/40">
             {outputTypeLabel(resolved.type)}
           </span>
@@ -225,6 +314,204 @@ const CostTree = ({
 );
 
 // ---------------------------------------------------------------------------
+// CraftedPropertiesPanel — quality sliders per slot + live modifier preview
+// ---------------------------------------------------------------------------
+
+const DEFAULT_QUALITY = 500;
+
+function modColor(m: number) {
+  return m > 1.005 ? "text-emerald-400" : m < 0.995 ? "text-red-400" : "text-muted-foreground/50";
+}
+function modLabel(m: number) {
+  const p = (m - 1) * 100;
+  return Math.abs(p) < 0.1 ? "+0%" : p > 0 ? `+${p.toFixed(1)}%` : `${p.toFixed(1)}%`;
+}
+
+const CraftedPropertiesPanel = ({ tiers }: { tiers: Tier[] }) => {
+  const slots = useMemo(() => {
+    const acc: CraftingSlot[] = [];
+    for (const tier of tiers) {
+      extractSlots(tier.mandatoryCost, acc, `t${tier.tier}`);
+      for (const opt of tier.optionalCosts ?? []) extractSlots(opt, acc, `t${tier.tier}opt`);
+    }
+    return acc;
+  }, [tiers]);
+
+  const [qualities, setQualities] = useState<Record<string, number>>({});
+  // For multi-option slots: which option is selected
+  const [selected, setSelected] = useState<Record<string, number>>({});
+
+  if (!slots.length) return null;
+
+  const getQ    = (key: string) => qualities[key] ?? DEFAULT_QUALITY;
+  const getSel  = (key: string) => selected[key]  ?? 0;
+
+  // Aggregate all slots → property summary
+  const aggregated = useMemo(() => {
+    const map = new Map<string, { pm: PropertyModifier; mods: number[] }>();
+    for (const slot of slots) {
+      const q = getQ(slot.key);
+      for (const pm of slot.propertyModifiers) {
+        const id = pm.propertyInternal ?? pm.propertyRef;
+        const mod = computeModifier(pm, q);
+        const e = map.get(id);
+        if (e) e.mods.push(mod); else map.set(id, { pm, mods: [mod] });
+      }
+    }
+    return map;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots, qualities]);
+
+  return (
+    <div>
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <Beaker className="h-4 w-4" />
+        Propriétés craftées
+        {Object.keys(qualities).length > 0 && (
+          <button
+            onClick={() => setQualities({})}
+            className="ml-auto text-[11px] font-normal normal-case tracking-normal text-muted-foreground hover:text-foreground"
+          >
+            Réinitialiser
+          </button>
+        )}
+      </h2>
+
+      <div className="space-y-3">
+        {slots.map(slot => {
+          const q        = getQ(slot.key);
+          const selIdx   = getSel(slot.key);
+          const option   = slot.options[selIdx] ?? null;
+
+          return (
+            <div key={slot.key} className="rounded-xl border border-border bg-card overflow-hidden">
+              {/* Slot header */}
+              <div className="flex items-center gap-3 border-b border-border/50 bg-secondary/20 px-4 py-2.5">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-card">
+                  <Box className="h-3.5 w-3.5 text-primary/60" />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-widest text-foreground">
+                  {slot.label}
+                </span>
+                {slot.chooseCount > 1 && (
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                    choisir {slot.chooseCount}
+                  </span>
+                )}
+              </div>
+
+              <div className="px-4 py-3 space-y-3">
+                {/* Resource selector if multiple options */}
+                {slot.options.length > 1 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {slot.options.map((opt, i) => (
+                      <button
+                        key={opt.ref}
+                        onClick={() => setSelected(p => ({ ...p, [slot.key]: i }))}
+                        className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
+                          selIdx === i
+                            ? "border-primary/60 bg-primary/10 text-primary"
+                            : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
+                        }`}
+                      >
+                        {opt.name ?? opt.ref.slice(0, 8)}
+                      </button>
+                    ))}
+                  </div>
+                ) : option ? (
+                  /* Single resource — show name + quantity prominently */
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-base font-bold text-primary">
+                      {option.name ?? option.ref.slice(0, 8)}
+                    </span>
+                    {option.quantity != null && (
+                      <span className="text-sm text-muted-foreground">
+                        {option.quantity} {option.unit ?? ""}
+                      </span>
+                    )}
+                  </div>
+                ) : null}
+
+                {/* Quality slider */}
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                      Qualité
+                    </span>
+                    <input
+                      type="number"
+                      min={0} max={1000} step={50}
+                      value={q}
+                      onChange={e => {
+                        const v = Math.max(0, Math.min(1000, Number(e.target.value)));
+                        setQualities(p => ({ ...p, [slot.key]: v }));
+                      }}
+                      className="w-16 rounded border border-primary/40 bg-primary/5 px-2 py-0.5 text-center font-mono text-xs font-bold text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                  <input
+                    type="range"
+                    min={0} max={1000} step={50}
+                    value={q}
+                    onChange={e => setQualities(p => ({ ...p, [slot.key]: Number(e.target.value) }))}
+                    className="w-full accent-primary"
+                  />
+                </div>
+
+                {/* Property modifier badges */}
+                <div className="flex flex-wrap gap-2">
+                  {slot.propertyModifiers.map(pm => {
+                    const mod = computeModifier(pm, q);
+                    return (
+                      <span
+                        key={pm.propertyRef}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-xs"
+                      >
+                        <span className="font-medium text-foreground">
+                          {pm.propertyName ?? pm.propertyInternal ?? "—"}
+                        </span>
+                        <span className={`font-mono font-bold ${modColor(mod)}`}>
+                          {modLabel(mod)}
+                        </span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Global summary */}
+        {aggregated.size > 0 && (
+          <div className="rounded-xl border border-border bg-card px-4 py-3">
+            <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+              Résultat global
+            </p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-3">
+              {[...aggregated.entries()].map(([id, { pm, mods }]) => {
+                const avg = mods.reduce((a, b) => a + b, 0) / mods.length;
+                return (
+                  <div key={id} className="flex items-baseline justify-between gap-1">
+                    <span className="truncate text-[11px] text-muted-foreground">
+                      {pm.propertyName ?? id}
+                      {pm.propertyUnit ? ` (${pm.propertyUnit})` : ""}
+                    </span>
+                    <span className={`shrink-0 font-mono text-xs font-bold ${modColor(avg)}`}>
+                      {modLabel(avg)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // BlueprintDetail page
 // ---------------------------------------------------------------------------
 
@@ -246,7 +533,7 @@ const BlueprintDetail = () => {
     noindex: false,
   });
 
-  // 1. Fetch blueprint detail
+  // Fetch blueprint detail — nameMap built directly from ingredients
   useEffect(() => {
     if (!id || !selectedVersion) return;
     setLoading(true);
@@ -256,38 +543,28 @@ const BlueprintDetail = () => {
       locale:      i18n.language,
     });
     apiFetch<BlueprintDetail>(`/api/blueprints/${id}?${qs}`)
-      .then(setBp)
+      .then((data) => {
+        setBp(data);
+        const map = new Map<string, ResolvedItem>();
+        for (const ing of data.ingredients ?? []) {
+          map.set(ing.ref, { id: ing.itemId, ref: ing.ref, name: ing.name, type: ing.type });
+        }
+        setNameMap(map);
+      })
       .catch(() => setError("Blueprint introuvable"))
       .finally(() => setLoading(false));
   }, [id, selectedVersion, i18n.language]);
 
-  // 2. Collect all unique resource refs from tiers
+  // allRefs still used for the resolved count in sidebar
   const allRefs = useMemo(() => {
     if (!bp?.tiers) return [];
     const set = new Set<string>();
     for (const tier of bp.tiers) {
       collectRefs(tier.mandatoryCost, set);
-      collectRefs(tier.optionalCosts, set);
+      for (const optNode of tier.optionalCosts ?? []) collectRefs(optNode, set);
     }
     return [...set];
   }, [bp]);
-
-  // 3. Batch-fetch items by refs to build nameMap
-  useEffect(() => {
-    if (!allRefs.length || !selectedVersion) return;
-    const qs = new URLSearchParams({
-      refs:        allRefs.join(","),
-      gameVersion: String(selectedVersion.id),
-      locale:      i18n.language,
-    });
-    apiFetch<ResolvedItem[]>(`/api/items?${qs}`)
-      .then((items) => {
-        const map = new Map<string, ResolvedItem>();
-        for (const item of items) map.set(item.ref, item);
-        setNameMap(map);
-      })
-      .catch(() => { /* non-blocking — keep empty map */ });
-  }, [allRefs, selectedVersion, i18n.language]);
 
   const Icon      = outputTypeIcon(bp?.outputType ?? null);
   const craftTime = fmtCraftTime(bp?.craftTimeSec ?? null);
@@ -418,12 +695,15 @@ const BlueprintDetail = () => {
                   {tier.mandatoryCost && (
                     <CostTree node={tier.mandatoryCost} label="Ingrédients obligatoires" nameMap={nameMap} />
                   )}
-                  {tier.optionalCosts && (
-                    <CostTree node={tier.optionalCosts} label="Ingrédients optionnels" nameMap={nameMap} />
-                  )}
+                  {tier.optionalCosts?.map((optNode, i) => (
+                    <CostTree key={i} node={optNode} label={`Ingrédients optionnels${tier.optionalCosts!.length > 1 ? ` (${i + 1})` : ""}`} nameMap={nameMap} />
+                  ))}
                 </div>
               </div>
             )}
+
+            {/* ── Propriétés craftées ── */}
+            {bp.tiers && <CraftedPropertiesPanel tiers={bp.tiers} />}
 
             {/* Multi-tiers */}
             {bp.tiers && bp.tiers.length > 1 && bp.tiers.slice(1).map((t) => (
@@ -440,7 +720,9 @@ const BlueprintDetail = () => {
                 </h2>
                 <div className="space-y-3">
                   {t.mandatoryCost && <CostTree node={t.mandatoryCost} label="Ingrédients obligatoires" nameMap={nameMap} />}
-                  {t.optionalCosts  && <CostTree node={t.optionalCosts}  label="Ingrédients optionnels"  nameMap={nameMap} />}
+                  {t.optionalCosts?.map((optNode, i) => (
+                    <CostTree key={i} node={optNode} label={`Ingrédients optionnels${t.optionalCosts!.length > 1 ? ` (${i + 1})` : ""}`} nameMap={nameMap} />
+                  ))}
                 </div>
               </div>
             ))}

@@ -47,6 +47,7 @@ const GRADE_CONFIG: Record<string, { color: string }> = {
 // ComponentCard
 // ---------------------------------------------------------------------------
 const ComponentCard = ({ c }: { c: ShipComponent }) => {
+  const { t } = useTranslation();
   const s    = typeStyle(c.type);
   const { Icon } = s;
   const gl   = gradeLabel(c.grade);
@@ -77,7 +78,7 @@ const ComponentCard = ({ c }: { c: ShipComponent }) => {
           )}
         </div>
         <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-          <span>{componentTypeLabel(c.type)}</span>
+          <span>{componentTypeLabel(c.type, t)}</span>
           {c.manufacturer && (
             <>
               <span className="opacity-40">·</span>
@@ -96,25 +97,25 @@ const ComponentCard = ({ c }: { c: ShipComponent }) => {
           <tbody>
             {c.size != null && (
               <tr className="border-b border-border/30 last:border-0">
-                <td className="py-1 text-muted-foreground">Taille</td>
+                <td className="py-1 text-muted-foreground">{t("common.size")}</td>
                 <td className="py-1 text-right font-mono font-semibold text-foreground">S{c.size}</td>
               </tr>
             )}
             {gl !== "?" && (
               <tr className="border-b border-border/30 last:border-0">
-                <td className="py-1 text-muted-foreground">Grade</td>
+                <td className="py-1 text-muted-foreground">{t("common.grade")}</td>
                 <td className={`py-1 text-right font-semibold ${gc.color}`}>{gl}</td>
               </tr>
             )}
             {c.manufacturer && (
               <tr className="border-b border-border/30 last:border-0">
-                <td className="py-1 text-muted-foreground">Fabricant</td>
+                <td className="py-1 text-muted-foreground">{t("common.manufacturer")}</td>
                 <td className="py-1 text-right font-semibold text-foreground truncate max-w-[120px]">{c.manufacturer}</td>
               </tr>
             )}
             {c.subType && c.subType.toLowerCase() !== "undefined" && (
               <tr className="border-b border-border/30 last:border-0">
-                <td className="py-1 text-muted-foreground">Sous-type</td>
+                <td className="py-1 text-muted-foreground">{t("common.subType")}</td>
                 <td className="py-1 text-right font-semibold text-foreground">{c.subType}</td>
               </tr>
             )}

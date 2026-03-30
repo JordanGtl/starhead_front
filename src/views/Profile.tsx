@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
+import Link from "next/link";
 import {
   User, Mail, Shield, KeyRound, Save, LogOut,
-  CheckCircle, AlertCircle, Loader2, Lock, Download, Trash2, MailCheck,
+  CheckCircle, AlertCircle, Loader2, Lock, Download, Trash2, MailCheck, Package, FlaskConical, Rocket, Cpu,
 } from "lucide-react";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -252,6 +253,25 @@ const Profile = () => {
             </div>
           </div>
         )}
+
+        {/* Inventaire shortcut */}
+        <Link
+          href="/inventory"
+          className="mb-6 flex items-center justify-between rounded-xl border border-border/50 bg-card/60 px-5 py-4 transition-colors hover:border-primary/30 hover:bg-card"
+        >
+          <div className="flex items-center gap-3">
+            <Package className="h-5 w-5 text-primary" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Mon inventaire</p>
+              <p className="text-xs text-muted-foreground">Vaisseaux, composants et crafts à réaliser</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-muted-foreground/40">
+            <Rocket className="h-4 w-4" />
+            <Cpu className="h-4 w-4" />
+            <FlaskConical className="h-4 w-4" />
+          </div>
+        </Link>
 
         <div className="grid gap-6 lg:grid-cols-2">
 

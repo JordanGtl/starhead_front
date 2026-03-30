@@ -10,6 +10,15 @@ import LiveSearchBar from "@/components/LiveSearchBar";
 import { useSEO } from "@/hooks/useSEO";
 import { fetchSpectrumPosts, avatarColor, avatarInitials, formatRelative, type SpectrumPost } from "@/data/spectrum";
 import { fetchNews, resolveThumbnail, type NewsItem } from "@/data/news";
+import { apiFetch } from "@/lib/api";
+
+interface DbStats {
+  ships: number;
+  weapons: number;
+  components: number;
+  locations: number;
+  manufacturers: number;
+}
 
 const Index = () => {
   const { t, i18n } = useTranslation();
@@ -17,18 +26,20 @@ const Index = () => {
 
   const [spectrumPosts, setSpectrumPosts] = useState<SpectrumPost[]>([]);
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
+  const [stats, setStats] = useState<DbStats | null>(null);
 
   useEffect(() => {
     fetchSpectrumPosts({ pagesize: 3, locale: i18n.language }).then(r => setSpectrumPosts(r.items)).catch(() => {});
     fetchNews({ pagesize: 3, locale: i18n.language }).then(r => setNewsItems(r.items)).catch(() => {});
+    apiFetch<DbStats>('/api/stats').then(setStats).catch(() => {});
   }, [i18n.language]);
 
   const categories = [
-    { title: t("index.categories.ships.title"), description: t("index.categories.ships.description"), icon: Rocket, count: 200, href: "/ships" },
-    { title: t("index.categories.weapons.title"), description: t("index.categories.weapons.description"), icon: Crosshair, count: 150, href: "/weapons" },
-    { title: t("index.categories.components.title"), description: t("index.categories.components.description"), icon: Cpu, count: 300, href: "/components" },
-    { title: t("index.categories.locations.title"), description: t("index.categories.locations.description"), icon: MapPin, count: 80, href: "/locations" },
-    { title: t("index.categories.manufacturers.title"), description: t("index.categories.manufacturers.description"), icon: Building2, count: 22, href: "/manufacturers" },
+    { title: t("index.categories.ships.title"), description: t("index.categories.ships.description"), icon: Rocket, count: stats?.ships ?? null, href: "/ships" },
+    { title: t("index.categories.weapons.title"), description: t("index.categories.weapons.description"), icon: Crosshair, count: stats?.weapons ?? null, href: "/weapons" },
+    { title: t("index.categories.components.title"), description: t("index.categories.components.description"), icon: Cpu, count: stats?.components ?? null, href: "/components" },
+    { title: t("index.categories.locations.title"), description: t("index.categories.locations.description"), icon: MapPin, count: stats?.locations ?? null, href: "/locations" },
+    { title: t("index.categories.manufacturers.title"), description: t("index.categories.manufacturers.description"), icon: Building2, count: stats?.manufacturers ?? null, href: "/manufacturers" },
   ];
 
   return (

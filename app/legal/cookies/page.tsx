@@ -96,11 +96,27 @@ export default function Cookies() {
               </p>
             </Section>
 
-            <Section icon={ShieldCheck} title="Consentement">
+            <Section icon={ShieldCheck} title="Consentement et Google Consent Mode v2">
               Lors de votre première visite, un bandeau vous informe de l'utilisation des cookies
-              non essentiels et recueille votre consentement. Vous pouvez accepter ou refuser
-              librement. Votre choix est mémorisé pour les visites suivantes et peut être modifié
-              à tout moment depuis la gestion des cookies de votre navigateur.
+              non essentiels et recueille votre consentement explicite (conformément au RGPD et aux
+              recommandations de la CNIL).
+              <br /><br />
+              Le site implémente le <span className="font-medium text-foreground">Google Consent Mode v2</span> :
+              <ul className="mt-2 space-y-1 list-none">
+                {[
+                  ['Si vous acceptez', 'Google Analytics et Google AdSense fonctionnent normalement avec personnalisation des annonces.'],
+                  ['Si vous refusez', 'Google Analytics est désactivé. Google AdSense reste actif mais affiche uniquement des annonces non personnalisées (sans dépôt de cookies de ciblage publicitaire).'],
+                ].map(([label, desc]) => (
+                  <li key={label} className="flex gap-2">
+                    <span className="font-medium text-foreground shrink-0">{label} :</span>
+                    <span>{desc}</span>
+                  </li>
+                ))}
+              </ul>
+              <br />
+              Votre choix est mémorisé pour les visites suivantes. Vous pouvez le modifier à tout
+              moment via le bouton <span className="font-medium text-foreground">« Gérer les cookies »</span> en
+              bas de chaque page du site.
             </Section>
 
             <Section icon={Settings} title="Gérer les cookies par navigateur">

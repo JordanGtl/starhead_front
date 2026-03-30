@@ -18,6 +18,23 @@ const shortManufacturer: Record<string, string> = {
   "Tumbril Land Systems": "Tumbril",
 };
 
+const manufacturerLogo: Record<string, string> = {
+  "Roberts Space Industries": "/manufacturers/logo-rsi.png",
+  "Aegis Dynamics":           "/manufacturers/logo-aegis-dynamic.png",
+  "Drake Interplanetary":     "/manufacturers/logo-drake.png",
+  "Anvil Aerospace":          "/manufacturers/logo-anvil.webp",
+  "Crusader Industries":      "/manufacturers/logo-crusader.webp",
+  "Origin Jumpworks":         "/manufacturers/logo-origin.webp",
+  "Consolidated Outland":     "/manufacturers/logo-consolidated-outland.png",
+  "Argo Astronautics":        "/manufacturers/logo-argo-astraunotic.svg",
+  "Greycat Industrial":       "/manufacturers/logo-greycat.svg",
+  "Kruger Intergalactic":     "/manufacturers/logo-kruger-intergalactic.svg",
+  "Tumbril Land Systems":     "/manufacturers/logo-tumbril.svg",
+  "MISC":                     "/manufacturers/logo-misc.png",
+  "Aopoa":                    "/manufacturers/logo-aopoa.svg",
+  "Esperia":                  "/manufacturers/logo-esperia.svg",
+};
+
 interface ShipCardProps {
   ship: Ship;
 }
@@ -54,7 +71,14 @@ const ShipCard = ({ ship }: ShipCardProps) => {
         )}
 
         {/* Manufacturer notch - top right */}
-        <div className="absolute top-0 right-0 bg-background/80 backdrop-blur-md pl-3 pb-2 pr-3 pt-2 rounded-bl-lg border-l border-b border-border/50 text-[10px] font-bold uppercase tracking-wider text-foreground/90">
+        <div className="absolute top-0 right-0 bg-background/80 backdrop-blur-md pl-3 pb-2 pr-3 pt-2 rounded-bl-lg border-l border-b border-border/50 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-foreground/90">
+          {manufacturerLogo[ship.manufacturer] && (
+            <img
+              src={manufacturerLogo[ship.manufacturer]}
+              alt={ship.manufacturer}
+              className="h-3.5 w-auto object-contain"
+            />
+          )}
           {shortManufacturer[ship.manufacturer] || ship.manufacturer}
         </div>
 
@@ -88,18 +112,24 @@ const ShipCard = ({ ship }: ShipCardProps) => {
         </h3>
 
         {/* Price row */}
-        <div className="mt-auto flex items-baseline justify-between pt-3">
-          <div className="flex items-center gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground">{t("ships.boutique")}</span>
-            <span className="font-display text-sm font-bold text-accent">{ship.priceEur} €</span>
+        {(ship.price != null || ship.priceEur != null) && (
+          <div className="mt-auto flex items-baseline justify-between pt-3">
+            {ship.priceEur != null && (
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-medium text-muted-foreground">{t("ships.boutique")}</span>
+                <span className="font-display text-sm font-bold text-accent">{ship.priceEur} €</span>
+              </div>
+            )}
+            {ship.price != null && (
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-medium text-muted-foreground">In-game</span>
+                <span className="font-display text-base font-bold text-primary">
+                  {ship.price.toLocaleString()} aUEC
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground">In-game</span>
-            <span className="font-display text-base font-bold text-primary">
-              {ship.price.toLocaleString()} aUEC
-            </span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Bottom accent line */}

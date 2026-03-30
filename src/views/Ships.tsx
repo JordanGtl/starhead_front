@@ -230,7 +230,6 @@ const Ships = () => {
         <>
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">{filtered.length}</span>{" "}
               {t("ships.found", { count: filtered.length })}
             </p>
           </div>

@@ -1,509 +1,1329 @@
 'use client';
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
-  FlaskConical, Search, Plus, Minus, Trash2,
-  ChevronDown, ChevronRight, Clock, Package, ShoppingCart,
-  CheckCircle2, Circle, RotateCcw,
+  FlaskConical, Search, Plus, Minus, Trash2, ChevronDown, ChevronRight,
+  Clock, Package, ShoppingCart, CheckCircle2, Circle, RotateCcw,
+  Loader2, AlertCircle, X, ArrowLeft, Award, Box, Check, Pencil, Save,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  BLUEPRINTS, MATERIALS, CATEGORY_LABELS, SUBCATEGORY_LABELS,
-  MATERIAL_CATEGORY_LABELS, formatCraftingTime,
-  type Blueprint, type BlueprintMaterial,
-} from "@/data/crafting";
+import { useVersion } from "@/contexts/VersionContext";
+import { apiFetch } from "@/lib/api";
 import { useSEO } from "@/hooks/useSEO";
+import PageHeader from "@/components/PageHeader";
+import { useCraftingInventory } from "@/hooks/useCraftingInventory";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface QueueItem {
-  blueprintId: string;
-  quantity: number;
+interface ApiBlueprintSummary {
+  id:                 number;
+  ref:                string;
+  dataId:             number;
+  internalName:       string | null;
+  blueprintType:      string | null;
+  outputName:         string | null;
+  outputType:         string | null;
+  outputSubType:      string | null;
+  outputManufacturer: string | null;
+  craftTimeSec:       number | null;
+  version:            { id: number; label: string } | null;
+}
+
+interface Ingredient {
+  ref:          string;
+  itemId:       number | null;
+  name:         string | null;
+  internalName: string | null;
+  type:         string | null;
+  quantity:     number | null;
+  unit:         string | null;
+  minQuality:   number | null;
+  tier:         number;
+  isMandatory:  boolean;
+}
+
+interface PropertyModifier {
+  propertyRef:          string;
+  propertyName:         string | null;
+  propertyUnit:         string | null;
+  propertyInternal:     string | null;
+  qualityMin:           number;
+  qualityMax:           number;
+  modifierAtMinQuality: number;
+  modifierAtMaxQuality: number;
+}
+
+interface SlotOption {
+  ref:      string;
+  name:     string | null;
+  quantity: number | null;
+  unit:     string | null;
+}
+
+interface CraftingSlot {
+  key:               string;
+  label:             string;
+  chooseCount:       number;
+  options:           SlotOption[];
+  propertyModifiers: PropertyModifier[];
+}
+
+interface CostNode {
+  type:               "select" | "resource" | "item" | "ref";
+  slot?:              string | null;
+  debugName?:         string | null;
+  chooseCount?:       number | null;
+  options?:           CostNode[] | null;
+  propertyModifiers?: PropertyModifier[] | null;
+  ref?:               string | null;
+  name?:              string | null;
+  quantity?:          number | null;
+  unit?:              string | null;
+}
+
+interface SimTier {
+  tier:          number;
+  mandatoryCost: CostNode | null;
+  optionalCosts: CostNode[] | null;
+}
+
+interface ApiBlueprintDetail extends ApiBlueprintSummary {
+  ingredients: Ingredient[];
+  tiers:       SimTier[] | null;
+  rewardPools: string[] | null;
+}
+
+interface SlotQuality {
+  slotKey:     string;
+  slotLabel:   string;
+  optionName:  string | null;
+  quality:     number;
+  modifiers:   { name: string | null; mod: number }[];
+}
+
+interface QueueEntry {
+  id:            number;
+  dataId:        number;
+  blueprintId:   number;
+  name:          string;
+  craftTimeSec:  number | null;
+  outputType:    string | null;
+  ingredients:   Ingredient[];
+  quantity:      number;
+  slots:         CraftingSlot[];
+  qualities:     Record<string, number>;
+  selOpt:        Record<string, number>;
+  slotQualities: SlotQuality[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function computeTotalMaterials(queue: QueueItem[]): Record<string, number> {
-  const totals: Record<string, number> = {};
+/** Convert a SavedIngredient (from API) to the local Ingredient shape used by computeTotals */
+function savedIngToIngredient(ing: { name: string; quantity: number; unit: string | null }): Ingredient {
+  return {
+    ref:          ing.name,
+    itemId:       null,
+    name:         ing.name,
+    internalName: null,
+    type:         null,
+    quantity:     ing.quantity,
+    unit:         ing.unit,
+    minQuality:   null,
+    tier:         1,
+    isMandatory:  true,
+  };
+}
+
+function fmtTime(sec: number | null): string {
+  if (!sec) return "—";
+  if (sec < 60)   return `${sec}s`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m`;
+  return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
+}
+
+function displayName(bp: ApiBlueprintSummary): string {
+  return bp.outputName ?? bp.internalName ?? bp.ref;
+}
+
+function formatPoolName(pool: string): string {
+  return pool
+    .replace(/^BP_MISSIONREWARD_/i, "")
+    .replace(/_\d+$/, "")
+    .split("_")
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function computeTotals(queue: QueueEntry[]): Map<string, { ing: Ingredient; qty: number }> {
+  const map = new Map<string, { ing: Ingredient; qty: number }>();
   for (const qi of queue) {
-    const bp = BLUEPRINTS.find(b => b.id === qi.blueprintId);
-    if (!bp) continue;
-    for (const mat of bp.materials) {
-      const needed = Math.ceil((mat.quantity * qi.quantity) / bp.outputQty);
-      totals[mat.materialId] = (totals[mat.materialId] ?? 0) + needed;
+    for (const ing of qi.ingredients) {
+      const qty = (ing.quantity ?? 1) * qi.quantity;
+      const e = map.get(ing.ref);
+      if (e) e.qty += qty; else map.set(ing.ref, { ing, qty });
     }
   }
-  return totals;
+  return map;
 }
 
-function totalCraftingTime(queue: QueueItem[]): number {
-  return queue.reduce((acc, qi) => {
-    const bp = BLUEPRINTS.find(b => b.id === qi.blueprintId);
-    return acc + (bp ? bp.craftingTimeSec * qi.quantity : 0);
-  }, 0);
+function totalCraftTime(queue: QueueEntry[]): number {
+  return queue.reduce((acc, qi) => acc + (qi.craftTimeSec ?? 0) * qi.quantity, 0);
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Quality helpers ──────────────────────────────────────────────────────────
 
-const GradeBadge = ({ grade }: { grade?: string }) => {
-  if (!grade) return null;
-  const colors: Record<string, string> = {
-    A: "text-amber-400 bg-amber-500/10 border-amber-500/30",
-    B: "text-blue-400 bg-blue-500/10 border-blue-500/30",
-    C: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
-    D: "text-muted-foreground bg-secondary border-border",
-  };
-  return (
-    <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${colors[grade] ?? colors.D}`}>
-      {grade}
-    </span>
-  );
-};
-
-const MaterialRow = ({
-  mat, qty, checked, onToggle,
-}: { mat: BlueprintMaterial; qty: number; checked: boolean; onToggle: () => void }) => {
-  const material = MATERIALS[mat.materialId];
-  if (!material) return null;
-  return (
-    <button
-      onClick={onToggle}
-      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-xs transition-all ${
-        checked
-          ? "border-border/30 bg-secondary/30 opacity-50"
-          : "border-border/50 bg-card hover:border-primary/30"
-      }`}
-    >
-      {checked
-        ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-        : <Circle className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+function extractSlots(node: CostNode | null, acc: CraftingSlot[], path = ""): void {
+  if (!node) return;
+  if (node.type === "select") {
+    const label = node.slot ?? node.debugName ?? "Slot";
+    const key   = `${path}/${label}`;
+    if (node.propertyModifiers?.length) {
+      const options: SlotOption[] = (node.options ?? [])
+        .filter(o => o.type === "resource" || o.type === "item")
+        .map(o => ({ ref: o.ref ?? "", name: o.name ?? null, quantity: o.quantity ?? null, unit: o.unit ?? null }));
+      if (options.length > 0) {
+        acc.push({ key, label, chooseCount: node.chooseCount ?? 1, options, propertyModifiers: node.propertyModifiers });
       }
-      <span className={`flex-1 font-medium ${checked ? "line-through text-muted-foreground" : material.color}`}>
-        {material.name}
-      </span>
-      <span className={`font-mono font-bold tabular-nums ${checked ? "text-muted-foreground" : "text-foreground"}`}>
-        ×{qty}
-      </span>
-    </button>
+    }
+    node.options?.forEach((child, i) => extractSlots(child, acc, `${key}[${i}]`));
+  }
+}
+
+function computeModifier(pm: PropertyModifier, quality: number): number {
+  const range = pm.qualityMax - pm.qualityMin;
+  if (range === 0) return pm.modifierAtMinQuality;
+  const t = Math.max(0, Math.min(1, (quality - pm.qualityMin) / range));
+  return pm.modifierAtMinQuality + t * (pm.modifierAtMaxQuality - pm.modifierAtMinQuality);
+}
+
+// Properties where lower = better (negative modifier = bonus)
+const INVERTED_PROPERTIES = new Set([
+  "recoil smoothness", "recoil handling", "recoil kick",
+  "douceur du recul",  "gestion du recul", "coup de recul",
+]);
+
+function isInverted(name: string | null | undefined): boolean {
+  return !!name && INVERTED_PROPERTIES.has(name.toLowerCase());
+}
+
+function modColor(m: number, name?: string | null) {
+  const inv = isInverted(name);
+  const good = inv ? m < 0.995 : m > 1.005;
+  const bad  = inv ? m > 1.005 : m < 0.995;
+  return good ? "text-emerald-400" : bad ? "text-red-400" : "text-muted-foreground/50";
+}
+function modLabel(m: number) {
+  const p = (m - 1) * 100;
+  return Math.abs(p) < 0.1 ? "+0%" : p > 0 ? `+${p.toFixed(1)}%` : `${p.toFixed(1)}%`;
+}
+
+const DEFAULT_QUALITY = 500;
+
+const PROPERTY_TRANSLATIONS: Record<string, Record<string, string>> = {
+  fr: {
+    "recoil smoothness":  "Douceur du recul",
+    "recoil handling":    "Gestion du recul",
+    "recoil kick":        "Coup de recul",
+    "impact force":       "Force d'impact",
+  },
+};
+
+function translateProperty(name: string | null, locale: string): string | null {
+  if (!name) return null;
+  const lang = locale.split("-")[0];
+  return PROPERTY_TRANSLATIONS[lang]?.[name.toLowerCase()] ?? name;
+}
+
+// ─── Quality slots panel ──────────────────────────────────────────────────────
+
+const QualityPanel = ({ tiers, qualities, setQualities, selOpt, setSelOpt, locale }: {
+  tiers:        SimTier[];
+  qualities:    Record<string, number>;
+  setQualities: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  selOpt:       Record<string, number>;
+  setSelOpt:    React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  locale:       string;
+}) => {
+  const slots = useMemo(() => {
+    const acc: CraftingSlot[] = [];
+    for (const tier of tiers) {
+      extractSlots(tier.mandatoryCost, acc, `t${tier.tier}`);
+      for (const opt of tier.optionalCosts ?? []) extractSlots(opt, acc, `t${tier.tier}opt`);
+    }
+    return acc;
+  }, [tiers]);
+
+  if (!slots.length) return (
+    <p className="py-8 text-center text-sm italic text-muted-foreground/50">
+      Aucune propriété craftable pour ce blueprint.
+    </p>
+  );
+
+  const getQ = (k: string) => qualities[k] ?? DEFAULT_QUALITY;
+
+  const aggregated = useMemo(() => {
+    const map = new Map<string, { pm: PropertyModifier; mods: number[] }>();
+    for (const slot of slots) {
+      for (const pm of slot.propertyModifiers) {
+        const id  = pm.propertyInternal ?? pm.propertyRef;
+        const mod = computeModifier(pm, getQ(slot.key));
+        const e = map.get(id);
+        if (e) e.mods.push(mod); else map.set(id, { pm, mods: [mod] });
+      }
+    }
+    return map;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots, qualities]);
+
+  return (
+    <div className="space-y-3">
+      {/* Summary bar */}
+      {aggregated.size > 0 && (
+        <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2">
+          {[...aggregated.entries()].map(([id, { pm, mods }]) => {
+            const avg = mods.reduce((a, b) => a + b, 0) / mods.length;
+            return (
+              <span key={id} className="inline-flex items-center gap-1 text-xs">
+                <span className="text-muted-foreground">{translateProperty(pm.propertyName, locale) ?? id}</span>
+                <span className={`font-mono font-bold ${modColor(avg, pm.propertyName)}`}>{modLabel(avg)}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Per-slot cards */}
+      {slots.map(slot => {
+        const q      = getQ(slot.key);
+        const selIdx = selOpt[slot.key] ?? 0;
+        const option = slot.options[selIdx] ?? null;
+        return (
+          <div key={slot.key} className="overflow-hidden rounded-xl border border-border bg-card">
+            {/* Header */}
+            <div className="flex items-center gap-2.5 border-b border-border/50 bg-secondary/20 px-4 py-2.5">
+              <div className="flex h-6 w-6 items-center justify-center rounded border border-border bg-card">
+                <Box className="h-3 w-3 text-primary/60" />
+              </div>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">{slot.label}</span>
+              {slot.chooseCount > 1 && (
+                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">×{slot.chooseCount}</span>
+              )}
+            </div>
+
+            <div className="space-y-3 px-4 py-3">
+              {/* Resource */}
+              {slot.options.length > 1 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {slot.options.map((opt, i) => (
+                    <button
+                      key={opt.ref}
+                      onClick={() => setSelOpt(p => ({ ...p, [slot.key]: i }))}
+                      className={`rounded border px-2 py-0.5 text-xs font-medium transition-colors ${
+                        selIdx === i
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border bg-secondary/30 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {opt.name ?? opt.ref.slice(0, 8)}
+                    </button>
+                  ))}
+                </div>
+              ) : option ? (
+                <div className="flex items-baseline gap-2">
+                  <span className="font-bold text-primary">{option.name ?? option.ref.slice(0, 8)}</span>
+                  {option.quantity != null && (
+                    <span className="text-sm text-muted-foreground">{option.quantity} {option.unit ?? ""}</span>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Slider */}
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Qualité</span>
+                  <input
+                    type="number" min={0} max={1000} step={50} value={q}
+                    onChange={e => setQualities(p => ({ ...p, [slot.key]: Math.max(0, Math.min(1000, Number(e.target.value))) }))}
+                    className="w-16 rounded border border-primary/30 bg-primary/5 px-2 py-0.5 text-center font-mono text-xs font-bold text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <input
+                  type="range" min={0} max={1000} step={50} value={q}
+                  onChange={e => setQualities(p => ({ ...p, [slot.key]: Number(e.target.value) }))}
+                  className="w-full accent-primary"
+                />
+              </div>
+
+              {/* Badges */}
+              <div className="flex flex-wrap gap-1.5">
+                {slot.propertyModifiers.map(pm => {
+                  const mod = computeModifier(pm, q);
+                  return (
+                    <span key={pm.propertyRef} className="inline-flex items-center gap-1.5 rounded border border-border bg-secondary/40 px-2 py-0.5 text-xs">
+                      <span className="font-medium text-foreground">{translateProperty(pm.propertyName, locale) ?? pm.propertyInternal ?? "—"}</span>
+                      <span className={`font-mono font-bold ${modColor(mod, pm.propertyName)}`}>{modLabel(mod)}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 };
 
-// ─── Blueprint Card (in catalog) ─────────────────────────────────────────────
+// ─── Blueprint detail / configurator ─────────────────────────────────────────
 
-const BlueprintCard = ({
-  bp, selected, inQueue, onSelect, onAddToQueue,
+type DetailTab = "recipe" | "obtain" | "properties";
+
+const BlueprintConfigurator = ({
+  blueprintId, locale, versionId,
+  onAdd, onBack,
 }: {
-  bp: Blueprint;
-  selected: boolean;
-  inQueue: boolean;
-  onSelect: () => void;
-  onAddToQueue: () => void;
+  blueprintId: number;
+  locale:      string;
+  versionId:   number | undefined;
+  onAdd:       (detail: ApiBlueprintDetail, qty: number, slots: CraftingSlot[], qualities: Record<string, number>, selOpt: Record<string, number>, slotQualities: SlotQuality[]) => void;
+  onBack:      () => void;
 }) => {
-  const subLabel = SUBCATEGORY_LABELS[bp.subcategory] ?? bp.subcategory;
+  const [detail, setDetail]       = useState<ApiBlueprintDetail | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [tab, setTab]             = useState<DetailTab>("recipe");
+  const [qty, setQty]             = useState(1);
+  const [added, setAdded]         = useState(false);
+  const [qualities, setQualities] = useState<Record<string, number>>({});
+  const [selOpt, setSelOpt]       = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setLoading(true);
+    setDetail(null);
+    setTab("recipe");
+    setQty(1);
+    setAdded(false);
+    setQualities({});
+    setSelOpt({});
+    const qs = new URLSearchParams({ locale });
+    if (versionId) qs.set("gameVersion", String(versionId));
+    apiFetch<ApiBlueprintDetail>(`/api/blueprints/${blueprintId}?${qs}`)
+      .then(setDetail)
+      .finally(() => setLoading(false));
+  }, [blueprintId, locale, versionId]);
+
+  const extractedSlots = useMemo(() => {
+    if (!detail?.tiers) return [];
+    const acc: CraftingSlot[] = [];
+    for (const tier of detail.tiers) {
+      extractSlots(tier.mandatoryCost, acc, `t${tier.tier}`);
+      for (const opt of tier.optionalCosts ?? []) extractSlots(opt, acc, `t${tier.tier}opt`);
+    }
+    return acc;
+  }, [detail]);
+
+  const buildSlotQualities = (slots: CraftingSlot[]): SlotQuality[] =>
+    slots.map(slot => {
+      const q      = qualities[slot.key] ?? DEFAULT_QUALITY;
+      const idx    = selOpt[slot.key] ?? 0;
+      const option = slot.options[idx] ?? null;
+      return {
+        slotKey:    slot.key,
+        slotLabel:  slot.label,
+        optionName: option?.name ?? null,
+        quality:    q,
+        modifiers:  slot.propertyModifiers.map(pm => ({
+          name: translateProperty(pm.propertyName, locale) ?? pm.propertyInternal ?? null,
+          mod:  computeModifier(pm, q),
+        })),
+      };
+    });
+
+  const handleAdd = () => {
+    if (!detail) return;
+    onAdd(detail, qty, extractedSlots, qualities, selOpt, buildSlotQualities(extractedSlots));
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
+
+  if (loading) return (
+    <div className="flex h-64 items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+
+  if (!detail) return (
+    <div className="flex h-64 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+      <AlertCircle className="h-5 w-5" />
+      Impossible de charger le blueprint
+    </div>
+  );
+
+  const tier1 = detail.ingredients.filter(i => i.tier === 1);
+  const mandatory = tier1.filter(i => i.isMandatory);
+  const optional  = tier1.filter(i => !i.isMandatory);
+  const hasTiers  = detail.tiers && detail.tiers.length > 1;
+
+  const tabs: { id: DetailTab; label: string; count?: number }[] = [
+    { id: "recipe",     label: "Recette",    count: mandatory.length },
+    { id: "obtain",     label: "Obtenir",    count: detail.rewardPools?.length },
+    { id: "properties", label: "Propriétés" },
+  ];
+
   return (
-    <button
-      onClick={onSelect}
-      className={`group w-full rounded-lg border p-3 text-left transition-all ${
-        selected
-          ? "border-primary/60 bg-primary/5 shadow-[0_0_16px_hsl(var(--primary)/0.1)]"
-          : "border-border/50 bg-card hover:border-border"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[11px] text-muted-foreground">{subLabel}</p>
-          <p className="truncate text-sm font-semibold text-foreground leading-tight">{bp.name}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {bp.grade && <GradeBadge grade={bp.grade} />}
-          {bp.size && (
-            <span className="rounded border border-border/50 bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
-              S{bp.size}
-            </span>
-          )}
+    <div className="flex h-full flex-col">
+      {/* Header card */}
+      <div className="mb-4">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="bg-gradient-to-br from-primary/10 to-transparent px-5 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {detail.outputType && (
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-primary/70">
+                    {detail.outputType}
+                    {detail.outputSubType && detail.outputSubType.toLowerCase() !== "undefined"
+                      ? ` · ${detail.outputSubType}` : ""}
+                    {detail.tiers && detail.tiers.length > 1 && (
+                      <span className="ml-1.5 rounded bg-primary/15 px-1.5 py-0.5 font-mono normal-case text-primary">
+                        T{detail.tiers.length}
+                      </span>
+                    )}
+                  </p>
+                )}
+                <h2 className="font-display text-xl font-bold text-foreground leading-tight">
+                  {displayName(detail)}
+                </h2>
+                {detail.outputManufacturer && (
+                  <p className="mt-0.5 text-sm text-muted-foreground">{detail.outputManufacturer}</p>
+                )}
+              </div>
+              <div className="shrink-0 flex flex-col items-end gap-2">
+                {detail.craftTimeSec && (
+                  <div className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
+                    <Clock className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-mono text-sm font-bold text-primary">{fmtTime(detail.craftTimeSec)}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-0.5 rounded-lg border border-border bg-card/80">
+                    <button
+                      onClick={() => setQty(q => Math.max(1, q - 1))}
+                      className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </button>
+                    <input
+                      type="number" min={1} value={qty}
+                      onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-10 bg-transparent text-center font-mono text-sm font-bold text-foreground focus:outline-none"
+                    />
+                    <button
+                      onClick={() => setQty(q => q + 1)}
+                      className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleAdd}
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+                      added
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : "bg-primary text-primary-foreground hover:bg-primary/90"
+                    }`}
+                  >
+                    {added ? (
+                      <><Check className="h-3.5 w-3.5" /> Ajouté</>
+                    ) : (
+                      <><ShoppingCart className="h-3.5 w-3.5" /> Ajouter à l&apos;inventaire</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
-      <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <Clock className="h-3 w-3" />{formatCraftingTime(bp.craftingTimeSec)}
-        </span>
-        <span className="flex items-center gap-1">
-          <Package className="h-3 w-3" />{bp.materials.length} mat.
-        </span>
-        <button
-          onClick={e => { e.stopPropagation(); onAddToQueue(); }}
-          className={`ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 font-medium transition-colors ${
-            inQueue
-              ? "bg-primary/20 text-primary"
-              : "bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary"
-          }`}
-        >
-          <Plus className="h-3 w-3" />
-          {inQueue ? "Ajouté" : "File"}
+
+      {/* Tabs */}
+      <div className="mb-4 flex items-center gap-1 border-b border-border">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-semibold transition-colors -mb-px ${
+              tab === t.id
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.label}
+            {t.count != null && t.count > 0 && (
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                tab === t.id ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
+              }`}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {tab === "recipe" && (
+          <div className="space-y-4">
+            {mandatory.length > 0 ? (
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                  Obligatoires
+                </p>
+                <div className="grid gap-1.5 sm:grid-cols-2">
+                  {mandatory.map(ing => (
+                    <div key={ing.ref} className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-foreground">
+                          {ing.name ?? ing.internalName ?? ing.ref.slice(0, 8)}
+                        </p>
+                        {ing.type && <p className="text-[10px] text-muted-foreground/60">{ing.type}</p>}
+                      </div>
+                      <span className="shrink-0 font-mono text-sm font-bold text-primary">
+                        ×{ing.quantity ?? "?"}{ing.unit ? ` ${ing.unit}` : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="py-6 text-center text-sm italic text-muted-foreground/50">
+                Aucun ingrédient enregistré.
+              </p>
+            )}
+
+            {optional.length > 0 && (
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                  Optionnels
+                </p>
+                <div className="grid gap-1.5 sm:grid-cols-2">
+                  {optional.map(ing => (
+                    <div key={ing.ref} className="flex items-center gap-2 rounded-lg border border-dashed border-border/40 bg-secondary/10 px-3 py-2">
+                      <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                        {ing.name ?? ing.internalName ?? ing.ref.slice(0, 8)}
+                      </p>
+                      <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                        ×{ing.quantity ?? "?"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {hasTiers && (
+              <p className="text-[11px] text-muted-foreground/50 italic">
+                + {detail.tiers!.length - 1} tier{detail.tiers!.length > 2 ? "s" : ""} supplémentaire{detail.tiers!.length > 2 ? "s" : ""} disponible{detail.tiers!.length > 2 ? "s" : ""}
+              </p>
+            )}
+          </div>
+        )}
+
+        {tab === "obtain" && (
+          <div>
+            {detail.rewardPools?.length ? (
+              <div className="space-y-2">
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Ce blueprint peut être obtenu en récompense des missions suivantes :
+                </p>
+                {detail.rewardPools.map(pool => (
+                  <div key={pool} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                      <Award className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">{formatPoolName(pool)}</p>
+                      <p className="text-[10px] font-mono text-muted-foreground/40">{pool}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center py-10 text-center text-muted-foreground">
+                <Award className="mb-3 h-8 w-8 opacity-20" />
+                <p className="text-sm">Aucune mission connue pour ce blueprint.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "properties" && detail.tiers && (
+          <QualityPanel
+            tiers={detail.tiers}
+            qualities={qualities}
+            setQualities={setQualities}
+            selOpt={selOpt}
+            setSelOpt={setSelOpt}
+            locale={locale}
+          />
+        )}
+      </div>
+
+    </div>
+  );
+};
+
+// ─── Cart inline editor ───────────────────────────────────────────────────────
+
+const CartInlineEditor = ({ qi, locale, onSave, onCancel }: {
+  qi:       QueueEntry;
+  locale:   string;
+  onSave:   (qualities: Record<string, number>, selOpt: Record<string, number>, slotQualities: SlotQuality[]) => void;
+  onCancel: () => void;
+}) => {
+  const [qualities, setQualities] = useState<Record<string, number>>(qi.qualities);
+  const [selOpt,    setSelOpt]    = useState<Record<string, number>>(qi.selOpt);
+
+  const buildSQ = (q: Record<string, number>, s: Record<string, number>): SlotQuality[] =>
+    qi.slots.map(slot => {
+      const quality = q[slot.key] ?? DEFAULT_QUALITY;
+      const idx     = s[slot.key] ?? 0;
+      const option  = slot.options[idx] ?? null;
+      return {
+        slotKey:    slot.key,
+        slotLabel:  slot.label,
+        optionName: option?.name ?? null,
+        quality,
+        modifiers: slot.propertyModifiers.map(pm => ({
+          name: translateProperty(pm.propertyName, locale) ?? pm.propertyInternal ?? null,
+          mod:  computeModifier(pm, quality),
+        })),
+      };
+    });
+
+  if (!qi.slots.length) return null;
+
+  return (
+    <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+      {qi.slots.map(slot => {
+        const q      = qualities[slot.key] ?? DEFAULT_QUALITY;
+        const selIdx = selOpt[slot.key] ?? 0;
+        const option = slot.options[selIdx] ?? null;
+        return (
+          <div key={slot.key} className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/60">{slot.label}</span>
+              <span className="font-mono text-xs font-bold text-primary">{q}</span>
+            </div>
+            {slot.options.length > 1 && (
+              <div className="flex flex-wrap gap-1">
+                {slot.options.map((opt, i) => (
+                  <button key={opt.ref} onClick={() => setSelOpt(p => ({ ...p, [slot.key]: i }))}
+                    className={`rounded border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                      selIdx === i
+                        ? "border-primary/50 bg-primary/10 text-primary"
+                        : "border-border bg-secondary/30 text-muted-foreground hover:text-foreground"
+                    }`}>
+                    {opt.name ?? opt.ref.slice(0, 8)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {slot.options.length === 1 && option && (
+              <p className="text-[11px] font-semibold text-primary">{option.name ?? option.ref.slice(0, 8)}</p>
+            )}
+            <input type="range" min={0} max={1000} step={50} value={q}
+              onChange={e => setQualities(p => ({ ...p, [slot.key]: Number(e.target.value) }))}
+              className="w-full accent-primary" />
+            <div className="flex flex-wrap gap-1">
+              {slot.propertyModifiers.map(pm => {
+                const mod = computeModifier(pm, q);
+                return (
+                  <span key={pm.propertyRef} className="inline-flex items-center gap-1 rounded border border-border bg-secondary/40 px-1.5 py-0.5 text-[10px]">
+                    <span className="text-muted-foreground">{translateProperty(pm.propertyName, locale) ?? pm.propertyInternal}</span>
+                    <span className={`font-mono font-bold ${modColor(mod, pm.propertyName)}`}>{modLabel(mod)}</span>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+      <div className="flex gap-2 pt-1">
+        <button onClick={() => onSave(qualities, selOpt, buildSQ(qualities, selOpt))}
+          className="flex-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors">
+          Sauvegarder
+        </button>
+        <button onClick={onCancel}
+          className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+          Annuler
         </button>
       </div>
-    </button>
+    </div>
+  );
+};
+
+// ─── Cart sidebar ─────────────────────────────────────────────────────────────
+
+const CartSidebar = ({
+  queue, onAdjust, onRemove, onReset, onEdit, onSave, locale,
+}: {
+  queue:    QueueEntry[];
+  onAdjust: (id: number, delta: number) => void;
+  onRemove: (id: number) => void;
+  onReset:  () => void;
+  onEdit:   (id: number, qualities: Record<string, number>, selOpt: Record<string, number>, slotQualities: SlotQuality[]) => void;
+  onSave:   (qi: QueueEntry) => void;
+  locale:   string;
+}) => {
+  const [checked,   setChecked]   = useState<Record<string, boolean>>({});
+  const [matOpen,   setMatOpen]   = useState(true);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [savedIds,  setSavedIds]  = useState<Set<number>>(new Set());
+
+  const totalsMap = useMemo(() => computeTotals(queue), [queue]);
+  const craftTime = useMemo(() => totalCraftTime(queue), [queue]);
+
+  const groupedMaterials = useMemo(() => {
+    const g: Record<string, Array<{ ref: string; ing: Ingredient; qty: number }>> = {};
+    for (const [ref, { ing, qty }] of totalsMap.entries()) {
+      const key = ing.type ?? "Autre";
+      if (!g[key]) g[key] = [];
+      g[key].push({ ref, ing, qty });
+    }
+    return g;
+  }, [totalsMap]);
+
+
+
+  if (!queue.length) return (
+    <div className="flex flex-col items-center rounded-xl border border-dashed border-border/50 py-16 text-center text-muted-foreground">
+      <ShoppingCart className="mb-3 h-8 w-8 opacity-20" />
+      <p className="text-sm font-medium">Inventaire vide</p>
+      <p className="mt-1 text-xs opacity-60">Ajoutez des blueprints depuis le catalogue</p>
+    </div>
+  );
+
+  const checkedCount = Object.values(checked).filter(Boolean).length;
+
+  return (
+    <div className="space-y-4">
+      {/* Materials — above queue */}
+      {totalsMap.size > 0 && (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <button
+            onClick={() => setMatOpen(o => !o)}
+            className="flex w-full items-center justify-between px-4 py-3 hover:bg-secondary/20 transition-colors"
+          >
+            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Package className="h-4 w-4 text-primary" />
+              Matériaux
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-normal text-muted-foreground">
+                {checkedCount}/{totalsMap.size}
+              </span>
+            </p>
+            <div className="flex items-center gap-2">
+              {Object.keys(checked).length > 0 && (
+                <span
+                  onClick={e => { e.stopPropagation(); setChecked({}); }}
+                  className="text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  Reset
+                </span>
+              )}
+              {matOpen
+                ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+              }
+            </div>
+          </button>
+
+          {/* Progress bar — always visible */}
+          <div className="px-4 pb-3">
+            <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full rounded-full bg-emerald-500/70 transition-all duration-300"
+                style={{ width: `${totalsMap.size > 0 ? (checkedCount / totalsMap.size) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+
+          {matOpen && (
+            <div className="border-t border-border/50 divide-y divide-border/50 max-h-[40vh] overflow-y-auto">
+              {Object.entries(groupedMaterials).map(([type, items]) => (
+                <div key={type} className="px-4 py-3">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">{type}</p>
+                  <div className="space-y-1.5">
+                    {items.sort((a, b) => b.qty - a.qty).map(({ ref, ing, qty }) => {
+                      const isChecked = !!checked[ref];
+                      return (
+                        <button
+                          key={ref}
+                          onClick={() => setChecked(p => ({ ...p, [ref]: !p[ref] }))}
+                          className={`flex w-full items-center gap-2.5 rounded-md border px-3 py-1.5 text-xs transition-all text-left ${
+                            isChecked
+                              ? "border-border/30 bg-secondary/20 opacity-50"
+                              : "border-border/50 bg-card hover:border-primary/30"
+                          }`}
+                        >
+                          {isChecked
+                            ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                            : <Circle className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+                          }
+                          <span className={`flex-1 truncate font-medium ${isChecked ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                            {ing.name ?? ing.internalName ?? ref.slice(0, 8)}
+                          </span>
+                          <span className={`shrink-0 font-mono font-bold tabular-nums ${isChecked ? "text-muted-foreground" : "text-foreground"}`}>
+                            ×{qty}{ing.unit ? ` ${ing.unit}` : ""}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Queue list */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <ShoppingCart className="h-4 w-4 text-primary" />
+            Inventaire ({queue.length})
+          </p>
+          <button onClick={onReset} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors">
+            <RotateCcw className="h-3 w-3" /> Vider
+          </button>
+        </div>
+        <div className="divide-y divide-border/50">
+          {queue.map(qi => {
+            const isEditing = editingId === qi.id;
+            const agg = new Map<string, { name: string; mods: number[] }>();
+            for (const sq of qi.slotQualities) {
+              for (const m of sq.modifiers) {
+                const key = m.name ?? sq.slotLabel;
+                const e = agg.get(key);
+                if (e) e.mods.push(m.mod); else agg.set(key, { name: key, mods: [m.mod] });
+              }
+            }
+            return (
+              <div key={qi.id} className="px-4 py-3 space-y-2">
+                {/* Row */}
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold text-foreground">{qi.name}</p>
+                    {qi.outputType && <p className="text-[10px] text-muted-foreground/50">{qi.outputType}</p>}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button onClick={() => onAdjust(qi.id, -1)}
+                      className="flex h-6 w-6 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground">
+                      <Minus className="h-3 w-3" />
+                    </button>
+                    <span className="w-6 text-center font-mono text-xs font-bold text-foreground">{qi.quantity}</span>
+                    <button onClick={() => onAdjust(qi.id, 1)}
+                      className="flex h-6 w-6 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground">
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </div>
+                  {qi.slots.length > 0 && (
+                    <button
+                      onClick={() => setEditingId(isEditing ? null : qi.id)}
+                      className={`flex h-6 w-6 items-center justify-center rounded border transition-colors ${
+                        isEditing
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      onSave(qi);
+                      setSavedIds(p => new Set(p).add(qi.id));
+                      setTimeout(() => setSavedIds(p => { const n = new Set(p); n.delete(qi.id); return n; }), 2000);
+                    }}
+                    title="Sauvegarder dans l'inventaire"
+                    className={`flex h-6 w-6 items-center justify-center rounded border transition-colors ${
+                      savedIds.has(qi.id)
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                        : "border-border text-muted-foreground hover:border-emerald-500/40 hover:text-emerald-400"
+                    }`}
+                  >
+                    {savedIds.has(qi.id) ? <Check className="h-3 w-3" /> : <Save className="h-3 w-3" />}
+                  </button>
+                  <button onClick={() => onRemove(qi.id)} className="text-muted-foreground/40 hover:text-destructive transition-colors">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Inline property summary */}
+                {!isEditing && agg.size > 0 && (
+                  <div className="rounded-md border border-border/40 bg-secondary/20 px-2.5 py-2 space-y-1">
+                    {[...agg.values()].map(({ name, mods }) => {
+                      const avg = mods.reduce((a, b) => a + b, 0) / mods.length;
+                      return (
+                        <div key={name} className="flex items-center justify-between gap-2 text-[11px]">
+                          <span className="text-muted-foreground/70 truncate">{name}</span>
+                          <span className={`shrink-0 font-mono font-bold ${modColor(avg, name)}`}>{modLabel(avg)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Inline editor */}
+                {isEditing && (
+                  <CartInlineEditor
+                    qi={qi}
+                    locale={locale}
+                    onSave={(qualities, selOpt, slotQualities) => {
+                      onEdit(qi.id, qualities, selOpt, slotQualities);
+                      setEditingId(null);
+                    }}
+                    onCancel={() => setEditingId(null)}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center border-t border-border px-4 py-2.5 bg-secondary/10">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" /> {fmtTime(craftTime)}
+          </span>
+        </div>
+      </div>
+
+    </div>
   );
 };
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 const CraftingSimulator = () => {
-  const { t } = useTranslation();
-  useSEO({ title: "Simulateur de craft", description: "Simulez vos recettes de fabrication dans Star Citizen.", path: "/tools/crafting" });
+  const { t, i18n }                      = useTranslation();
+  const { selectedVersion }              = useVersion();
+  const { save: saveToInventory, crafts: savedCrafts, loaded: inventoryLoaded } = useCraftingInventory();
 
-  // Catalog state
+  useSEO({
+    title: "Simulateur de craft",
+    description: "Simulez vos recettes de fabrication dans Star Citizen.",
+    path: "/tools/crafting",
+  });
+
+  // ── Catalog state ──
   const [query, setQuery]         = useState("");
-  const [category, setCategory]   = useState<string>("all");
-  const [openCats, setOpenCats]   = useState<Record<string, boolean>>({});
+  const [results, setResults]     = useState<ApiBlueprintSummary[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [openTypes, setOpenTypes] = useState<Record<string, boolean>>({});
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Selection
-  const [selected, setSelected]   = useState<Blueprint | null>(null);
+  // ── View state: "list" | "detail" ──
+  const [view, setView]       = useState<"list" | "detail">("list");
+  const [selectedId, setSelectedId] = useState<number | null>(null); // Blueprint.id
 
-  // Queue
-  const [queue, setQueue]         = useState<QueueItem[]>([]);
+  // ── Queue ──
+  const [queue, setQueue] = useState<QueueEntry[]>([]);
 
-  // Materials checked (got them)
-  const [checked, setChecked]     = useState<Record<string, boolean>>({});
-
-  // ── Catalog filtering ──
-
-  const filtered = useMemo(() => {
-    return BLUEPRINTS.filter(bp => {
-      if (category !== "all" && bp.category !== category) return false;
-      if (query) {
-        const q = query.toLowerCase();
-        return (
-          bp.name.toLowerCase().includes(q) ||
-          (SUBCATEGORY_LABELS[bp.subcategory] ?? "").toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [query, category]);
-
-  const groupedFiltered = useMemo(() => {
-    const groups: Record<string, Blueprint[]> = {};
-    for (const bp of filtered) {
-      if (!groups[bp.category]) groups[bp.category] = [];
-      groups[bp.category].push(bp);
+  // ── Fetch blueprints ──
+  const fetchBlueprints = useCallback(async (q: string) => {
+    if (!selectedVersion) return;
+    setSearching(true);
+    try {
+      const qs = new URLSearchParams({ locale: i18n.language, gameVersion: String(selectedVersion.id), pagesize: "100" });
+      if (q) qs.set("q", q);
+      const data = await apiFetch<ApiBlueprintSummary[] | { items: ApiBlueprintSummary[] }>(`/api/blueprints?${qs}`);
+      setResults(Array.isArray(data) ? data : (data as any).items ?? []);
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
     }
-    return groups;
-  }, [filtered]);
+  }, [selectedVersion, i18n.language]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchBlueprints(query), 350);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, fetchBlueprints]);
+
+  // ── Group results ──
+  const grouped = useMemo(() => {
+    const g: Record<string, ApiBlueprintSummary[]> = {};
+    for (const bp of results) {
+      const key = bp.outputType ?? "Autre";
+      if (!g[key]) g[key] = [];
+      g[key].push(bp);
+    }
+    return g;
+  }, [results]);
+
+  // ── Hydrate queue from API on first load ──
+  const inventoryHydratedRef = useRef(false);
+  useEffect(() => {
+    if (!inventoryLoaded || inventoryHydratedRef.current) return;
+    inventoryHydratedRef.current = true;
+    if (savedCrafts.length === 0) return;
+    const maxId = Math.max(...savedCrafts.map(c => c.id));
+    nextIdRef.current = maxId + 1;
+    setQueue(savedCrafts.map(c => ({
+      id:            c.id,
+      dataId:        c.dataId,
+      blueprintId:   c.blueprintId,
+      name:          c.name,
+      craftTimeSec:  c.craftTimeSec,
+      outputType:    c.outputType,
+      ingredients:   (c.ingredients ?? []).map(savedIngToIngredient),
+      quantity:      c.quantity,
+      slots:         [],
+      qualities:     {},
+      selOpt:        {},
+      slotQualities: c.slotQualities,
+    })));
+  }, [inventoryLoaded, savedCrafts]);
+
+  // ── Enrich queue entries that have no ingredients (old saves without ingredient data) ──
+  useEffect(() => {
+    if (!inventoryLoaded || !selectedVersion) return;
+    const toEnrich = queue.filter(qi => qi.ingredients.length === 0 && qi.blueprintId);
+    if (!toEnrich.length) return;
+
+    // Deduplicate by blueprintId to avoid duplicate fetches
+    const unique = [...new Map(toEnrich.map(qi => [qi.blueprintId, qi])).values()];
+
+    Promise.allSettled(unique.map(async qi => {
+      const qs = new URLSearchParams({ locale: i18n.language, gameVersion: String(selectedVersion.id) });
+      const detail = await apiFetch<ApiBlueprintDetail>(`/api/blueprints/${qi.blueprintId}?${qs}`);
+      return {
+        blueprintId: qi.blueprintId,
+        ingredients: detail.ingredients.filter(i => i.tier === 1 && i.isMandatory),
+      };
+    })).then(results => {
+      const byBpId = new Map<number, Ingredient[]>();
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value.ingredients.length > 0) {
+          byBpId.set(r.value.blueprintId, r.value.ingredients);
+        }
+      }
+      if (byBpId.size > 0) {
+        setQueue(prev => prev.map(qi =>
+          qi.ingredients.length === 0 && byBpId.has(qi.blueprintId)
+            ? { ...qi, ingredients: byBpId.get(qi.blueprintId)! }
+            : qi
+        ));
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inventoryLoaded, selectedVersion?.id]);
 
   // ── Queue helpers ──
-
-  const addToQueue = useCallback((id: string) => {
-    setQueue(prev => {
-      const existing = prev.find(q => q.blueprintId === id);
-      if (existing) return prev.map(q => q.blueprintId === id ? { ...q, quantity: q.quantity + 1 } : q);
-      return [...prev, { blueprintId: id, quantity: 1 }];
-    });
+  const nextIdRef = useRef(0);
+  const addToQueue = useCallback((
+    detail: ApiBlueprintDetail, qty: number,
+    slots: CraftingSlot[], qualities: Record<string, number>, selOpt: Record<string, number>,
+    slotQualities: SlotQuality[],
+  ) => {
+    const mandatory1 = detail.ingredients.filter(i => i.tier === 1 && i.isMandatory);
+    setQueue(prev => [...prev, {
+      id:            nextIdRef.current++,
+      dataId:        detail.dataId,
+      blueprintId:   detail.id,
+      name:          displayName(detail),
+      craftTimeSec:  detail.craftTimeSec,
+      outputType:    detail.outputType,
+      ingredients:   mandatory1,
+      quantity:      qty,
+      slots,
+      qualities,
+      selOpt,
+      slotQualities,
+    }]);
   }, []);
 
-  const removeFromQueue = useCallback((id: string) => {
-    setQueue(prev => prev.filter(q => q.blueprintId !== id));
-  }, []);
-
-  const adjustQty = useCallback((id: string, delta: number) => {
-    setQueue(prev => prev.map(qi => {
-      if (qi.blueprintId !== id) return qi;
-      const next = qi.quantity + delta;
-      return next < 1 ? qi : { ...qi, quantity: next };
-    }));
-  }, []);
-
-  const resetQueue = () => { setQueue([]); setChecked({}); };
-
-  // ── Total materials ──
-
-  const totalMaterials = useMemo(() => computeTotalMaterials(queue), [queue]);
-  const craftingTime   = useMemo(() => totalCraftingTime(queue), [queue]);
-
-  const groupedMaterials = useMemo(() => {
-    const groups: Record<string, Array<{ id: string; qty: number }>> = {};
-    for (const [matId, qty] of Object.entries(totalMaterials)) {
-      const mat = MATERIALS[matId];
-      if (!mat) continue;
-      if (!groups[mat.category]) groups[mat.category] = [];
-      groups[mat.category].push({ id: matId, qty });
-    }
-    return groups;
-  }, [totalMaterials]);
-
-  const remainingMaterials = Object.entries(totalMaterials).filter(([id]) => !checked[id]).length;
-
-  // ── Render ──
+  const selectBlueprint = (id: number) => {
+    setSelectedId(id);
+    setView("detail");
+  };
 
   return (
     <div className="relative min-h-screen bg-background">
-      {/* Hero */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[22vh] overflow-hidden">
-        <img src="/hero-bg.jpg" alt="" aria-hidden className="h-full w-full object-cover opacity-30" style={{ objectPosition: "50% 40%" }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/60 to-background" />
-      </div>
+      <PageHeader
+        breadcrumb={[
+          { label: "Outils", href: "/tools", icon: FlaskConical },
+          { label: "Simulateur de craft" },
+        ]}
+        title="Simulateur de craft"
+        label="Outils"
+        labelIcon={FlaskConical}
+        subtitle="Simulez vos recettes de fabrication dans Star Citizen."
+        bgImage="/images/crafting-bg.webp"
+      />
 
-      {/* Header */}
-      <div className="relative z-10 flex min-h-[20vh] items-center">
-        <div className="container pb-2 pt-8">
-          <div className="mb-1 flex items-center gap-2">
-            <FlaskConical className="h-5 w-5 text-primary" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("tools.hub.overline")}</span>
+      {/* Back button (detail view only) */}
+      {view === "detail" && (
+        <div className="sticky top-[calc(4rem+2rem)] z-30 border-b border-border/40 bg-background/80 backdrop-blur-sm">
+          <div className="container py-2">
+            <button
+              onClick={() => setView("list")}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Retour à la liste
+            </button>
           </div>
-          <h1 className="font-display text-4xl font-bold text-foreground">{t("tools.crafting.title")}</h1>
-          <p className="mt-2 max-w-lg text-sm text-muted-foreground">{t("tools.crafting.desc")}</p>
         </div>
-      </div>
+      )}
 
-      {/* Main 3-column layout */}
-      <div className="relative z-10 container pb-12 pt-0">
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr_300px]">
+      {/* Two-column layout */}
+      <div className="container pb-12 pt-6">
+        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
 
-          {/* ── Col 1 : Catalogue ── */}
-          <div className="flex flex-col gap-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t("tools.crafting.catalog")}</p>
-
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text" value={query} onChange={e => setQuery(e.target.value)}
-                placeholder={t("common.search")}
-                className="h-9 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none"
-              />
-            </div>
-
-            {/* Category tabs */}
-            <div className="flex flex-wrap gap-1.5">
-              {["all", ...Object.keys(CATEGORY_LABELS)].map(cat => (
-                <button key={cat} onClick={() => setCategory(cat)}
-                  className={`rounded-lg border px-2 py-1 text-[11px] font-medium transition-all ${
-                    category === cat
-                      ? "border-primary/50 bg-primary/10 text-primary"
-                      : "border-border/50 bg-card/50 text-muted-foreground hover:text-foreground"
-                  }`}>
-                  {cat === "all" ? t("common.all") : CATEGORY_LABELS[cat]}
-                </button>
-              ))}
-            </div>
-
-            {/* Blueprint list grouped by category */}
-            <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: "calc(100vh - 300px)" }}>
-              {Object.entries(groupedFiltered).map(([cat, bps]) => {
-                const open = openCats[cat] !== false; // open by default
-                return (
-                  <div key={cat}>
-                    <button
-                      onClick={() => setOpenCats(p => ({ ...p, [cat]: !open }))}
-                      className="flex w-full items-center justify-between py-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground"
-                    >
-                      {CATEGORY_LABELS[cat] ?? cat}
-                      {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          {/* ── Col 1: Catalog (list) or Configurator (detail) ── */}
+          <div>
+            {view === "list" ? (
+              <div className="space-y-4">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text" value={query} onChange={e => setQuery(e.target.value)}
+                    placeholder="Rechercher un blueprint…"
+                    className="h-10 w-full rounded-lg border border-border bg-card pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none"
+                  />
+                  {query && (
+                    <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="h-4 w-4" />
                     </button>
-                    {open && (
-                      <div className="flex flex-col gap-1.5">
-                        {bps.map(bp => (
-                          <BlueprintCard
-                            key={bp.id}
-                            bp={bp}
-                            selected={selected?.id === bp.id}
-                            inQueue={queue.some(q => q.blueprintId === bp.id)}
-                            onSelect={() => setSelected(bp)}
-                            onAddToQueue={() => addToQueue(bp.id)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {filtered.length === 0 && (
-                <div className="flex flex-col items-center py-12 text-center text-sm text-muted-foreground">
-                  <FlaskConical className="mb-3 h-8 w-8 opacity-30" />
-                  {t("common.noResults")}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── Col 2 : Détail blueprint sélectionné ── */}
-          <div>
-            {selected ? (
-              <div className="rounded-xl border border-border bg-card p-6">
-                {/* Header */}
-                <div className="mb-5 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="mb-1 text-xs text-muted-foreground uppercase tracking-wider">
-                      {CATEGORY_LABELS[selected.category]} · {SUBCATEGORY_LABELS[selected.subcategory] ?? selected.subcategory}
-                    </p>
-                    <h2 className="font-display text-2xl font-bold text-foreground">{selected.name}</h2>
-                    <div className="mt-2 flex items-center gap-2">
-                      {selected.grade && <GradeBadge grade={selected.grade} />}
-                      {selected.size && (
-                        <span className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                          Taille {selected.size}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => addToQueue(selected.id)}
-                    className="flex shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-                  >
-                    <ShoppingCart className="h-4 w-4" />
-                    {t("tools.crafting.addToQueue")}
-                  </button>
+                  )}
                 </div>
 
-                {/* Description */}
-                <p className="mb-6 text-sm leading-relaxed text-muted-foreground">{selected.description}</p>
-
-                {/* Stats */}
-                <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg border border-border bg-secondary/30 p-3 text-center">
-                    <p className="text-xs text-muted-foreground">{t("tools.crafting.craftTime")}</p>
-                    <p className="font-display text-lg font-bold text-foreground">{formatCraftingTime(selected.craftingTimeSec)}</p>
+                {searching ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
-                  <div className="rounded-lg border border-border bg-secondary/30 p-3 text-center">
-                    <p className="text-xs text-muted-foreground">{t("tools.crafting.output")}</p>
-                    <p className="font-display text-lg font-bold text-foreground">×{selected.outputQty}</p>
+                ) : Object.keys(grouped).length === 0 ? (
+                  <div className="flex flex-col items-center py-16 text-center text-muted-foreground">
+                    <FlaskConical className="mb-3 h-10 w-10 opacity-20" />
+                    <p className="text-sm">{selectedVersion ? "Aucun résultat" : "Sélectionnez une version de jeu"}</p>
                   </div>
-                  <div className="rounded-lg border border-border bg-secondary/30 p-3 text-center">
-                    <p className="text-xs text-muted-foreground">{t("tools.crafting.materials")}</p>
-                    <p className="font-display text-lg font-bold text-foreground">{selected.materials.length}</p>
-                  </div>
-                </div>
-
-                {/* Materials list (for 1 craft) */}
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("tools.crafting.materialsFor1")}
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {selected.materials.map(mat => {
-                    const material = MATERIALS[mat.materialId];
-                    if (!material) return null;
-                    return (
-                      <div key={mat.materialId}
-                        className="flex items-center gap-2 rounded-lg border border-border/50 bg-secondary/20 px-3 py-2">
-                        <div className={`h-2 w-2 rounded-full ${material.color.replace('text-', 'bg-')}`} />
-                        <span className={`flex-1 text-xs font-medium ${material.color}`}>{material.name}</span>
-                        <span className="font-mono text-sm font-bold text-foreground tabular-nums">×{mat.quantity}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="flex h-64 flex-col items-center justify-center rounded-xl border border-dashed border-border/50 text-center text-muted-foreground">
-                <FlaskConical className="mb-3 h-10 w-10 opacity-20" />
-                <p className="text-sm">{t("tools.crafting.selectBlueprint")}</p>
-              </div>
-            )}
-
-            {/* Queue list */}
-            {queue.length > 0 && (
-              <div className="mt-6 rounded-xl border border-border bg-card p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <ShoppingCart className="h-4 w-4 text-primary" />
-                    {t("tools.crafting.queue")} ({queue.length})
-                  </p>
-                  <button onClick={resetQueue} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive">
-                    <RotateCcw className="h-3 w-3" /> {t("common.reset")}
-                  </button>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {queue.map(qi => {
-                    const bp = BLUEPRINTS.find(b => b.id === qi.blueprintId);
-                    if (!bp) return null;
-                    return (
-                      <div key={qi.blueprintId} className="flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/20 px-3 py-2">
-                        <span className="flex-1 text-xs font-medium text-foreground truncate">{bp.name}</span>
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => adjustQty(qi.blueprintId, -1)}
-                            className="flex h-5 w-5 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground">
-                            <Minus className="h-3 w-3" />
+                ) : (
+                  <div className="space-y-2">
+                    {Object.entries(grouped).map(([type, bps]) => {
+                      const open = openTypes[type] !== false;
+                      return (
+                        <div key={type} className="overflow-hidden rounded-xl border border-border bg-card">
+                          <button
+                            onClick={() => setOpenTypes(p => ({ ...p, [type]: !open }))}
+                            className="flex w-full items-center justify-between px-4 py-3 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-secondary/20 transition-colors"
+                          >
+                            <span>{type}</span>
+                            <span className="flex items-center gap-2">
+                              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-normal normal-case text-muted-foreground">{bps.length}</span>
+                              {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                            </span>
                           </button>
-                          <span className="w-6 text-center font-mono text-xs font-bold text-foreground">{qi.quantity}</span>
-                          <button onClick={() => adjustQty(qi.blueprintId, 1)}
-                            className="flex h-5 w-5 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground">
-                            <Plus className="h-3 w-3" />
-                          </button>
+                          {open && (
+                            <div className="border-t border-border/50 divide-y divide-border/30">
+                              {bps.map(bp => (
+                                <button
+                                  key={bp.dataId}
+                                  onClick={() => selectBlueprint(bp.id)}
+                                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/20 group"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                                      {displayName(bp)}
+                                    </p>
+                                    {bp.outputManufacturer && (
+                                      <p className="text-[10px] text-muted-foreground/50">{bp.outputManufacturer}</p>
+                                    )}
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    {bp.craftTimeSec && (
+                                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                        <Clock className="h-3 w-3" />{fmtTime(bp.craftTimeSec)}
+                                      </span>
+                                    )}
+                                    {queue.some(q => q.blueprintId === bp.id) && (
+                                      <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                                        Ajouté
+                                      </span>
+                                    )}
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <button onClick={() => removeFromQueue(qi.blueprintId)} className="text-muted-foreground/50 hover:text-destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatCraftingTime(craftingTime)}</span>
-                  <span className="text-emerald-400">{remainingMaterials} mat. restants</span>
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+            ) : (
+              selectedId && selectedVersion && (
+                <>
+                  <BlueprintConfigurator
+                    blueprintId={selectedId}
+                    locale={i18n.language}
+                    versionId={selectedVersion.id}
+                    onAdd={(detail, qty, slots, qualities, selOpt, sq) => {
+                      addToQueue(detail, qty, slots, qualities, selOpt, sq);
+                      const ingredients = detail.ingredients
+                        .filter(i => i.tier === 1 && i.isMandatory)
+                        .map(i => ({
+                          name:     i.name ?? i.internalName ?? i.ref,
+                          quantity: i.quantity ?? 1,
+                          unit:     i.unit,
+                        }));
+                      saveToInventory({
+                        dataId:        detail.dataId,
+                        blueprintId:   detail.id,
+                        name:          displayName(detail),
+                        craftTimeSec:  detail.craftTimeSec,
+                        outputType:    detail.outputType,
+                        quantity:      qty,
+                        slotQualities: sq,
+                        ingredients,
+                      });
+                    }}
+                    onBack={() => setView("list")}
+                  />
+                </>
+              )
             )}
           </div>
 
-          {/* ── Col 3 : Matériaux totaux ── */}
+          {/* ── Col 2: Cart ── */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t("tools.crafting.totalMaterials")}</p>
-              {Object.keys(checked).length > 0 && (
-                <button onClick={() => setChecked({})} className="text-[11px] text-muted-foreground hover:text-foreground">
-                  {t("common.reset")}
-                </button>
-              )}
-            </div>
-
-            {queue.length === 0 ? (
-              <div className="flex flex-col items-center rounded-xl border border-dashed border-border/50 py-12 text-center text-muted-foreground">
-                <ShoppingCart className="mb-3 h-8 w-8 opacity-20" />
-                <p className="text-sm">{t("tools.crafting.queueEmpty")}</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 280px)" }}>
-                {Object.entries(groupedMaterials).map(([catId, mats]) => (
-                  <div key={catId}>
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                      {MATERIAL_CATEGORY_LABELS[catId] ?? catId}
-                    </p>
-                    <div className="flex flex-col gap-1.5">
-                      {mats.sort((a, b) => b.qty - a.qty).map(({ id, qty }) => {
-                        const mat = MATERIALS[id];
-                        if (!mat) return null;
-                        const fakeMatEntry: BlueprintMaterial = { materialId: id, quantity: qty };
-                        return (
-                          <MaterialRow
-                            key={id}
-                            mat={fakeMatEntry}
-                            qty={qty}
-                            checked={!!checked[id]}
-                            onToggle={() => setChecked(p => ({ ...p, [id]: !p[id] }))}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Progress */}
-                <div className="rounded-lg border border-border bg-card p-3">
-                  <div className="mb-2 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{t("tools.crafting.progress")}</span>
-                    <span className="font-bold text-foreground">
-                      {Object.keys(checked).length} / {Object.keys(totalMaterials).length}
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="h-full rounded-full bg-emerald-500/70 transition-all duration-300"
-                      style={{ width: `${Object.keys(totalMaterials).length > 0 ? (Object.keys(checked).length / Object.keys(totalMaterials).length) * 100 : 0}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            <CartSidebar
+              queue={queue}
+              onAdjust={(id, delta) =>
+                setQueue(prev => prev.map(qi =>
+                  qi.id !== id ? qi
+                    : qi.quantity + delta < 1 ? qi
+                    : { ...qi, quantity: qi.quantity + delta }
+                ))
+              }
+              onRemove={id => setQueue(prev => prev.filter(q => q.id !== id))}
+              onReset={() => setQueue([])}
+              onEdit={(id, qualities, selOpt, slotQualities) =>
+                setQueue(prev => prev.map(q => q.id !== id ? q : { ...q, qualities, selOpt, slotQualities }))
+              }
+              onSave={qi => saveToInventory({
+                dataId:        qi.dataId,
+                blueprintId:   qi.blueprintId,
+                name:          qi.name,
+                craftTimeSec:  qi.craftTimeSec,
+                outputType:    qi.outputType,
+                quantity:      qi.quantity,
+                slotQualities: qi.slotQualities,
+              })}
+              locale={i18n.language}
+            />
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from "react";
-import { Users, Shield, Search, Loader2, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { Users, Shield, Search, Loader2, CheckCircle2, XCircle, RefreshCw, Ban, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import AdminLayout from "@/components/AdminLayout";
@@ -10,6 +10,7 @@ interface AdminUser {
   name: string;
   email: string;
   roles: string[];
+  suspendedAt: string | null;
 }
 
 const UsersAdmin = () => {
@@ -17,7 +18,8 @@ const UsersAdmin = () => {
   const [users, setUsers]     = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch]   = useState("");
-  const [toggling, setToggling] = useState<number | null>(null);
+  const [toggling, setToggling]     = useState<number | null>(null);
+  const [suspending, setSuspending] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,6 +48,18 @@ const UsersAdmin = () => {
       setUsers(prev => prev.map(x => x.id === updated.id ? updated : x));
     } finally {
       setToggling(null);
+    }
+  };
+
+  const toggleSuspend = async (u: AdminUser) => {
+    setSuspending(u.id);
+    try {
+      const updated = await apiFetch<AdminUser>(`/api/admin/users/${u.id}/suspend`, {
+        method: "PATCH",
+      });
+      setUsers(prev => prev.map(x => x.id === updated.id ? updated : x));
+    } finally {
+      setSuspending(null);
     }
   };
 
@@ -116,22 +130,34 @@ const UsersAdmin = () => {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">E-mail</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rôles</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Admin</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Suspension</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map(u => {
-                  const isAdmin = u.roles.includes("ROLE_ADMIN");
-                  const isMe    = u.id === me?.id;
+                  const isAdmin      = u.roles.includes("ROLE_ADMIN");
+                  const isSuspended  = !!u.suspendedAt;
+                  const isMe         = u.id === me?.id;
                   return (
-                    <tr key={u.id} className="bg-card transition-colors hover:bg-secondary/20">
+                    <tr key={u.id} className={`transition-colors hover:bg-secondary/20 ${isSuspended ? "bg-red-500/5" : "bg-card"}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-sm font-bold text-primary">
+                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-display text-sm font-bold ${
+                            isSuspended ? "bg-red-500/10 text-red-400" : "bg-primary/10 text-primary"
+                          }`}>
                             {u.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{u.name}</p>
-                            {isMe && <p className="text-[10px] text-primary">Vous</p>}
+                            <p className={`font-medium ${isSuspended ? "text-muted-foreground line-through" : "text-foreground"}`}>{u.name}</p>
+                            <div className="flex items-center gap-1.5">
+                              {isMe && <p className="text-[10px] text-primary">Vous</p>}
+                              {isSuspended && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-red-400">
+                                  <Ban className="h-2.5 w-2.5" />
+                                  Suspendu
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -170,12 +196,37 @@ const UsersAdmin = () => {
                           </button>
                         )}
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        {isMe ? (
+                          <span className="text-xs text-muted-foreground/50">—</span>
+                        ) : (
+                          <button
+                            onClick={() => toggleSuspend(u)}
+                            disabled={suspending === u.id}
+                            title={isSuspended ? "Réactiver le compte" : "Suspendre le compte"}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                              isSuspended
+                                ? "border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                                : "border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                            }`}
+                          >
+                            {suspending === u.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : isSuspended ? (
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                            ) : (
+                              <Ban className="h-3.5 w-3.5" />
+                            )}
+                            {isSuspended ? "Réactiver" : "Suspendre"}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    <td colSpan={5} className="px-4 py-12 text-center text-sm text-muted-foreground">
                       Aucun utilisateur trouvé.
                     </td>
                   </tr>

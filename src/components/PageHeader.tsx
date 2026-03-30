@@ -20,11 +20,13 @@ export interface PageHeaderProps {
   labelIcon?: React.ElementType;
   /** Sous-titre affiché sous le titre */
   subtitle?: string;
+  /** Image de fond personnalisée (remplace /hero-bg.jpg) */
+  bgImage?: string;
 }
 
 // ─── Composant ────────────────────────────────────────────────────────────────
 
-const PageHeader = ({ breadcrumb, title, label, labelIcon: LabelIcon, subtitle }: PageHeaderProps) => (
+const PageHeader = ({ breadcrumb, title, label, labelIcon: LabelIcon, subtitle, bgImage }: PageHeaderProps) => (
   <>
     {/* Breadcrumb collé sous la navbar */}
     <div className="sticky top-16 z-40 border-b border-border/60 bg-card/90 backdrop-blur-xl">
@@ -54,7 +56,7 @@ const PageHeader = ({ breadcrumb, title, label, labelIcon: LabelIcon, subtitle }
     {/* Hero pleine largeur */}
     <div className="relative overflow-hidden">
       <img
-        src="/hero-bg.jpg"
+        src={bgImage ?? "/hero-bg.jpg"}
         alt=""
         aria-hidden
         className="absolute inset-0 h-full w-full object-cover opacity-15"

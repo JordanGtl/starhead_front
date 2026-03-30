@@ -55,12 +55,14 @@ export async function fetchFactions(params?: {
   type?: string;
   reaction?: string;
   locale?: string;
+  versionId?: number;
 }): Promise<Faction[]> {
   const qs = new URLSearchParams();
-  if (params?.q) qs.set('q', params.q);
-  if (params?.type) qs.set('type', params.type);
-  if (params?.reaction) qs.set('reaction', params.reaction);
-  if (params?.locale) qs.set('locale', params.locale);
+  if (params?.q)         qs.set('q', params.q);
+  if (params?.type)      qs.set('type', params.type);
+  if (params?.reaction)  qs.set('reaction', params.reaction);
+  if (params?.locale)    qs.set('locale', params.locale);
+  if (params?.versionId) qs.set('versionId', String(params.versionId));
   const query = qs.toString() ? `?${qs}` : '';
   const data = await apiFetch<Faction[]>(`/api/factions${query}`);
   if (!params?.q && !params?.type && !params?.reaction) factions = data;

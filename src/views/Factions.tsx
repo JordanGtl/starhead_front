@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { fetchFactions, type Faction } from "@/data/factions";
 import { useSEO } from "@/hooks/useSEO";
+import { useVersion } from "@/contexts/VersionContext";
 
 // --- Static config maps ---
 
@@ -112,6 +113,7 @@ const Factions = () => {
   const { t } = useTranslation();
   useSEO({ title: "Factions", description: "Factions de l'univers Star Citizen : leurs réputations, objectifs et interactions.", path: "/factions" });
   const locale = i18n.language.startsWith("fr") ? "fr" : "en";
+  const { selectedVersion } = useVersion();
 
   const [allFactions, setAllFactions]         = useState<Faction[]>([]);
   const [loading, setLoading]                 = useState(true);
@@ -122,10 +124,10 @@ const Factions = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetchFactions({ locale })
+    fetchFactions({ locale, versionId: selectedVersion?.id })
       .then(setAllFactions)
       .finally(() => setLoading(false));
-  }, [locale]);
+  }, [locale, selectedVersion?.id]);
 
   const types     = useMemo(() => [...new Set(allFactions.map((f) => f.factionType))].sort(), [allFactions]);
   const reactions = useMemo(() => [...new Set(allFactions.map((f) => f.defaultReaction))], [allFactions]);
@@ -281,7 +283,6 @@ const Factions = () => {
         <>
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">{filtered.length}</span>{" "}
               {t("factions.found", { count: filtered.length })}
             </p>
           </div>

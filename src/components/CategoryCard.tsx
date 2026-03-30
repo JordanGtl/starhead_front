@@ -7,7 +7,7 @@ interface CategoryCardProps {
   title: string;
   description: string;
   icon: LucideIcon;
-  count: number;
+  count: number | null;
   href: string;
 }
 
@@ -26,7 +26,10 @@ const CategoryCard = ({ title, description, icon: Icon, count, href }: CategoryC
         <h3 className="font-display text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         <div className="mt-3 font-display text-xs font-medium text-primary">
-          {count} {t("common.entries")} →
+          {count === null
+            ? <span className="inline-block h-3 w-10 animate-pulse rounded bg-primary/20" />
+            : <>{count} {t("common.entries")} →</>
+          }
         </div>
       </div>
     </Link>

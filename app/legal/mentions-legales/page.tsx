@@ -33,8 +33,14 @@ export default function MentionsLegales() {
           <div className="flex flex-col gap-6">
 
             <Section icon={Building2} title="Éditeur du site">
-              Le site Star-Head (star-head.sc) est édité par GTL Studio.<br />
-              Site web : <a href="https://gtl-studio.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">gtl-studio.com</a>
+              Le site Star-Head (star-head.sc) est édité par :<br />
+              <span className="font-medium text-foreground">Jordan Guillot</span> — particulier<br />
+              Contact : <a href="mailto:contact@star-head.sc" className="text-primary hover:underline">contact@star-head.sc</a><br />
+              <br />
+              Conformément à l'article 6 III de la loi n° 2004-575 du 21 juin 2004 (LCEN), l'éditeur
+              est une personne physique qui a choisi de ne pas rendre publique son adresse personnelle.
+              Ses coordonnées complètes sont tenues à disposition par l'hébergeur ci-dessous et
+              communiquées sur réquisition des autorités compétentes.
             </Section>
 
             <Section icon={User} title="Directeur de la publication">

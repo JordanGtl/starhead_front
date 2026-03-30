@@ -1,7 +1,7 @@
 'use client';
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Gem, Radio, ScrollText, Route, PersonStanding, Sword } from "lucide-react";
+import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Gem, Radio, ScrollText, Route, PersonStanding, Sword, Package, GitCompareArrows } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVersion } from "@/contexts/VersionContext";
@@ -83,10 +83,11 @@ function versionChannel(label: string, isLive: boolean): "LIVE" | "PTU" {
 }
 
 const toolItems = [
-  { labelKey: "tools.loadout.title",  path: "/tools/loadout",  icon: Settings2,    descKey: "tools.loadout.desc"  },
-  { labelKey: "tools.crafting.title", path: "/tools/crafting", icon: FlaskConical, descKey: "tools.crafting.desc" },
-  { labelKey: "tools.refining.title", path: "/tools/refining", icon: Gem,          descKey: "tools.refining.desc" },
-  { labelKey: "tools.ccu.title",      path: "/tools/ccu",      icon: Route,        descKey: "tools.ccu.desc"      },
+  { labelKey: "tools.loadout.title",  path: "/ships/configure", icon: Settings2,         descKey: "tools.loadout.desc"  },
+  { labelKey: "tools.compare.title",  path: "/ships/compare",   icon: GitCompareArrows,  descKey: "tools.compare.desc"  },
+  { labelKey: "tools.crafting.title", path: "/tools/crafting",  icon: FlaskConical,      descKey: "tools.crafting.desc" },
+  { labelKey: "tools.refining.title", path: "/tools/refining",  icon: Gem,          descKey: "tools.refining.desc" },
+  { labelKey: "tools.ccu.title",      path: "/tools/ccu",       icon: Route,        descKey: "tools.ccu.desc"      },
 ];
 
 const Navbar = () => {
@@ -127,8 +128,8 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const dbActive    = dbItems.some((g) => g.items.some((i) => pathname.startsWith(i.path)));
   const toolsActive = toolItems.some((i) => pathname.startsWith(i.path));
+  const dbActive    = !toolsActive && dbItems.some((g) => g.items.some((i) => pathname.startsWith(i.path)));
 
   const topLinks = [
     { labelKey: "nav.lore",     path: "/lore",     icon: BookOpen  },
@@ -350,6 +351,16 @@ const Navbar = () => {
                     >
                       <User className="h-4 w-4 text-muted-foreground" />
                       Mon profil
+                    </Link>
+
+                    {/* Inventaire */}
+                    <Link
+                      href="/inventory"
+                      onClick={() => setUserOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary/40"
+                    >
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      Mon inventaire
                     </Link>
 
                     {/* Admin */}
@@ -626,6 +637,14 @@ const Navbar = () => {
                   <User className="h-3.5 w-3.5 text-primary" />
                   <span className="text-sm font-medium text-foreground">{user?.name}</span>
                 </div>
+                <Link
+                  href="/inventory"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-foreground hover:bg-secondary/40"
+                >
+                  <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                  Mon inventaire
+                </Link>
                 {user?.roles.includes("ROLE_ADMIN") && (
                   <Link
                     href="/admin/users"

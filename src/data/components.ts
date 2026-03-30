@@ -136,34 +136,38 @@ export const COMPONENT_TYPES = [
 
 export type ComponentType = typeof COMPONENT_TYPES[number];
 
-/** Libellés d'affichage pour chaque type */
-export const COMPONENT_TYPE_LABELS: Record<string, string> = {
-  // Composants vaisseau
-  Shield:               'Shield',
-  PowerPlant:           'Power Plant',
-  Cooler:               'Cooler',
-  QuantumDrive:         'Quantum Drive',
-  Radar:                'Radar',
-  WeaponDefensive:      'Countermeasures',
-  FuelTank:             'Fuel Tank',
-  QuantumFuelTank:      'Quantum Tank',
-  FuelIntake:           'Fuel Intake',
-  // Armures personnelles
-  Armor:                'Armure complète',
-  Char_Armor_Helmet:    'Casque',
-  Char_Armor_Torso:     'Torse',
-  Char_Armor_Arms:      'Bras',
-  Char_Armor_Legs:      'Jambes',
-  Char_Armor_Undersuit: 'Sous-combinaison',
-  Char_Armor_Backpack:  'Sac à dos',
-  // Consommables
-  FPS_Consumable:       'Consommable',
-  Medicine:             'Médicament',
-  Food:                 'Nourriture',
+/** Clés i18n pour chaque type (components.types.<key>) */
+export const COMPONENT_TYPE_I18N_KEYS: Record<string, string> = {
+  Shield:               'components.types.Shield',
+  PowerPlant:           'components.types.PowerPlant',
+  Cooler:               'components.types.Cooler',
+  QuantumDrive:         'components.types.QuantumDrive',
+  Radar:                'components.types.Radar',
+  WeaponDefensive:      'components.types.WeaponDefensive',
+  FuelTank:             'components.types.FuelTank',
+  QuantumFuelTank:      'components.types.QuantumFuelTank',
+  FuelIntake:           'components.types.FuelIntake',
+  Armor:                'components.types.Armor',
+  Char_Armor_Helmet:    'components.types.Char_Armor_Helmet',
+  Char_Armor_Torso:     'components.types.Char_Armor_Torso',
+  Char_Armor_Arms:      'components.types.Char_Armor_Arms',
+  Char_Armor_Legs:      'components.types.Char_Armor_Legs',
+  Char_Armor_Undersuit: 'components.types.Char_Armor_Undersuit',
+  Char_Armor_Backpack:  'components.types.Char_Armor_Backpack',
+  FPS_Consumable:       'components.types.FPS_Consumable',
+  Medicine:             'components.types.Medicine',
+  Food:                 'components.types.Food',
 };
 
-export const componentTypeLabel = (type: string | null): string =>
-  type ? (COMPONENT_TYPE_LABELS[type] ?? type) : '—';
+export const componentTypeLabel = (
+  type: string | null,
+  t?: (key: string) => string,
+): string => {
+  if (!type) return '—';
+  const i18nKey = COMPONENT_TYPE_I18N_KEYS[type];
+  if (i18nKey && t) return t(i18nKey);
+  return type; // fallback: raw type name
+};
 
 /** Correspondance grade numérique → lettre */
 export const gradeLabel = (grade: number | null): 'A' | 'B' | 'C' | 'D' | '?' => {

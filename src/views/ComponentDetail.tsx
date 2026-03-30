@@ -258,6 +258,7 @@ const PersonalArmorStats = ({ d }: { d: PersonalArmorData }) => (
 // ─── Infobulle principale ─────────────────────────────────────────────────────
 
 const WoWTooltip = ({ c }: { c: ShipComponent }) => {
+  const { t } = useTranslation();
   const s  = typeStyle(c.type);
 
   const statsContent = (() => {
@@ -299,7 +300,7 @@ const WoWTooltip = ({ c }: { c: ShipComponent }) => {
           )}
         </div>
         <div className="-mt-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-          <span>{componentTypeLabel(c.type)}</span>
+          <span>{componentTypeLabel(c.type, t)}</span>
           {c.size != null && (
             <>
               <span className="opacity-40">·</span>
@@ -558,7 +559,7 @@ const Skeleton = () => (
 
 const ComponentDetail = () => {
   const { id }              = useParams<{ id: string }>();
-  const { i18n }            = useTranslation();
+  const { t, i18n }         = useTranslation();
   const { selectedVersion } = useVersion();
   const locale              = i18n.language?.split("-")[0] ?? "en";
 
@@ -615,11 +616,11 @@ const ComponentDetail = () => {
       <PageHeader
         breadcrumb={[
           { label: "Composants", href: "/components", icon: Cpu },
-          { label: componentTypeLabel(component.type), href: `/components?type=${component.type}` },
+          { label: componentTypeLabel(component.type, t), href: `/components?type=${component.type}` },
           { label: name },
         ]}
         title={name}
-        label={componentTypeLabel(component.type)}
+        label={componentTypeLabel(component.type, t)}
         labelIcon={Icon}
         subtitle={[
           component.manufacturer,
