@@ -8,7 +8,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { useSEO } from "@/hooks/useSEO";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_URL } from "@/lib/api";
 import { useVersion } from "@/contexts/VersionContext";
 import PageHeader from "@/components/PageHeader";
 
@@ -152,7 +152,7 @@ const ShipSelector = ({
     <div className="relative overflow-hidden rounded-lg border border-border bg-card">
       {selected.image && (
         <div className="absolute inset-0">
-          <img src={selected.image} alt="" className="h-full w-full object-cover opacity-20" />
+          <img src={`${API_URL}${selected.image}`} alt="" className="h-full w-full object-cover opacity-20" />
           <div className="absolute inset-0 bg-gradient-to-t from-card via-card/80 to-card/40" />
         </div>
       )}

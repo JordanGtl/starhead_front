@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useVersion } from "@/contexts/VersionContext";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_URL } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { useSEO } from "@/hooks/useSEO";
 import { componentTypeLabel, COMPONENT_TYPE_I18N_KEYS } from "@/data/components";
@@ -280,7 +280,7 @@ const ShipDetail = () => {
       {/* Bande de fond — image du vaisseau ou fallback hero-bg */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[28vh] overflow-hidden">
         <img
-          src={ship.image ?? '/hero-bg.jpg'}
+          src={ship.image ? `${API_URL}${ship.image}` : '/hero-bg.jpg'}
           alt=""
           aria-hidden="true"
           className="h-full w-full object-cover opacity-40"

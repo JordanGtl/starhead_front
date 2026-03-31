@@ -25,7 +25,7 @@ import { useVersion } from "@/contexts/VersionContext";
 import { useSEO } from "@/hooks/useSEO";
 import { useCraftingInventory, type SavedCraft, type SavedIngredient } from "@/hooks/useCraftingInventory";
 import { useCraftCategories, type CraftCategory } from "@/hooks/useCraftCategories";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_URL } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 
 // ─── Minimal blueprint type ───────────────────────────────────────────────────
@@ -821,7 +821,7 @@ const Inventory = () => {
                   {/* Image */}
                   <div className="relative h-32 overflow-hidden bg-secondary/40">
                     {l.shipDef.image ? (
-                      <img src={l.shipDef.image} alt={l.shipDef.internalName} className="h-full w-full object-cover opacity-60" />
+                      <img src={`${API_URL}${l.shipDef.image}`} alt={l.shipDef.internalName} className="h-full w-full object-cover opacity-60" />
                     ) : (
                       <div className="flex h-full items-center justify-center">
                         <Rocket className="h-10 w-10 text-muted-foreground/20" />

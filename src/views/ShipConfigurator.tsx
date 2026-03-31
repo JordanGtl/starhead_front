@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useShipLoadouts } from '@/hooks/useShipLoadouts';
 import { useTranslation } from 'react-i18next';
 import { useVersion } from '@/contexts/VersionContext';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_URL } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { componentTypeLabel } from '@/data/components';
 
@@ -849,7 +849,7 @@ const ShipConfigurator = () => {
       {/* Bande de fond */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[22vh] overflow-hidden">
         <img
-          src={ship?.image ?? '/hero-bg.jpg'}
+          src={ship?.image ? `${API_URL}${ship.image}` : '/hero-bg.jpg'}
           alt="" aria-hidden="true"
           className="h-full w-full object-cover opacity-30"
           style={!ship?.image ? { objectPosition: '50% 30%' } : undefined}

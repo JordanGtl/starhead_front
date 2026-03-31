@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Ship } from "@/data/ships";
 import { Users, Globe, Rocket } from "lucide-react";
+import { API_URL } from "@/lib/api";
 
 const shortManufacturer: Record<string, string> = {
   "Roberts Space Industries": "RSI",
@@ -56,7 +57,7 @@ const ShipCard = ({ ship }: ShipCardProps) => {
       <div className="relative h-52 overflow-hidden bg-secondary">
         {ship.image ? (
           <img
-            src={ship.image}
+            src={ship.image?.startsWith('/') ? `${API_URL}${ship.image}` : ship.image}
             alt={ship.name}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             loading="lazy"

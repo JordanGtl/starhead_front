@@ -10,7 +10,7 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVersion } from '@/contexts/VersionContext';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_URL } from '@/lib/api';
 import AdminLayout from '@/components/AdminLayout';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -117,12 +117,15 @@ function ImagePanel({
   const [uploading, setUploading] = useState(false);
   const [deleting,  setDeleting]  = useState(false);
   const [error,     setError]     = useState<string | null>(null);
-  const [preview,   setPreview]   = useState<string | null>(ship.image);
+  const toAbsolute = (url: string | null) =>
+    url && url.startsWith('/') ? `${API_URL}${url}` : url;
+
+  const [preview,   setPreview]   = useState<string | null>(toAbsolute(ship.image));
   const [dragOver,  setDragOver]  = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync preview when ship.image changes (e.g. after parent state update)
-  useEffect(() => setPreview(ship.image), [ship.image]);
+  useEffect(() => setPreview(toAbsolute(ship.image)), [ship.image]);
 
   const handleFile = (file: File) => {
     setError(null);
@@ -138,14 +141,17 @@ function ImagePanel({
     const reader = new FileReader();
     reader.onload = async (e) => {
       const dataUri = e.target?.result as string;
-      setPreview(dataUri);
+      setPreview(dataUri); // preview locale immédiate (data URI)
       setUploading(true);
       try {
-        await apiFetch(`/api/admin/ships/${ship.id}/image`, {
+        const res = await apiFetch<{ image: string }>(`/api/admin/ships/${ship.id}/image`, {
           method: 'PUT',
           body: JSON.stringify({ image: dataUri }),
         });
-        onImageChange(ship.id, dataUri);
+        // L'API renvoie désormais une URL relative, on préfixe avec API_URL
+        const imageUrl = `${API_URL}${res.image}?t=${Date.now()}`;
+        setPreview(imageUrl);
+        onImageChange(ship.id, imageUrl);
       } catch (err: any) {
         setError(err?.message ?? 'Erreur lors de l\'upload.');
         setPreview(ship.image);
