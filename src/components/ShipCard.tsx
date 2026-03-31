@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Ship } from "@/data/ships";
-import { Users, Globe, Rocket } from "lucide-react";
+import { Users, Globe, Rocket, Tag } from "lucide-react";
 import { API_URL } from "@/lib/api";
 
 const shortManufacturer: Record<string, string> = {
@@ -47,7 +47,7 @@ const statusStyles = {
 };
 
 const ShipCard = ({ ship }: ShipCardProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
     <Link
       href={`/ships/${ship.id}`}
@@ -114,27 +114,44 @@ const ShipCard = ({ ship }: ShipCardProps) => {
 
         {/* Price row */}
         {(ship.price != null || ship.priceEur != null) && (
-          <div className="mt-auto flex items-baseline justify-between pt-3">
-            {ship.priceEur != null && (
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] font-medium text-muted-foreground">{t("ships.boutique")}</span>
-                <span className="font-display text-sm font-bold text-accent">{ship.priceEur} €</span>
-              </div>
-            )}
-            {ship.price != null && (
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] font-medium text-muted-foreground">In-game</span>
-                <span className="font-display text-base font-bold text-primary">
-                  {ship.price.toLocaleString()} aUEC
-                </span>
-              </div>
-            )}
+          <div className="mt-auto border-t border-border pt-3">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+              <Tag className="h-3.5 w-3.5" />
+              <span className="text-xs">{t("ships.boutique")}</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              {i18n.language === 'en' ? (
+                <>
+                  {ship.price != null && (
+                    <span className="font-mono text-sm font-semibold text-muted-foreground">
+                      ${ship.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  )}
+                  {ship.priceEur != null && (
+                    <span className="font-mono text-xs text-muted-foreground/60">
+                      {ship.priceEur.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  {ship.priceEur != null && (
+                    <span className="font-mono text-sm font-semibold text-muted-foreground">
+                      {ship.priceEur.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                    </span>
+                  )}
+                  {ship.price != null && (
+                    <span className="font-mono text-xs text-muted-foreground/60">
+                      ${ship.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Bottom accent line */}
-      <div className="h-0.5 bg-gradient-to-r from-primary via-primary/60 to-accent/40" />
     </Link>
   );
 };
