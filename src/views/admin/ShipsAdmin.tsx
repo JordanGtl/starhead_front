@@ -33,6 +33,9 @@ interface AdminShip {
   cargo:        number | null;
   insuranceBaseWait: number | null;
   versionId:    number | null;
+  price:        number | null;
+  priceEur:     number | null;
+  priceUpdatedAt: string | null;
 }
 
 interface LoadoutEntry {
@@ -369,7 +372,7 @@ function ExpandedRow({
 }) {
   return (
     <tr className="bg-card">
-      <td colSpan={9} className="p-0">
+      <td colSpan={10} className="p-0">
         {/* Info bar */}
         <div className="border-t border-border bg-secondary/5 px-4 py-2.5 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
           <span className="font-mono text-muted-foreground/40">{ship.internalName}</span>
@@ -677,6 +680,7 @@ const ShipsAdmin = () => {
                         <Box className="inline h-3.5 w-3.5" />
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Carrière</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Prix</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Publié</th>
                       <th className="px-4 py-3 w-8" />
                     </tr>
@@ -719,6 +723,18 @@ const ShipsAdmin = () => {
                             <td className="px-4 py-3 hidden xl:table-cell">
                               <p className="text-xs text-muted-foreground">{ship.career ?? '—'}</p>
                             </td>
+                            <td className="px-4 py-3 text-right hidden lg:table-cell">
+                              {ship.price != null ? (
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <span className="text-xs font-medium text-foreground">${ship.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  {ship.priceEur != null && (
+                                    <span className="text-[10px] text-muted-foreground/60">{ship.priceEur.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground/30">—</span>
+                              )}
+                            </td>
                             <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                               <button
                                 onClick={() => togglePublish(ship)}
@@ -747,7 +763,7 @@ const ShipsAdmin = () => {
                     })}
                     {data?.items.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                        <td colSpan={10} className="px-4 py-12 text-center text-sm text-muted-foreground">
                           Aucun vaisseau trouvé.
                         </td>
                       </tr>

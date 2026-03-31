@@ -5,8 +5,12 @@ import { useState, useEffect } from "react";
 import {
   ArrowLeft, Shield, Zap, Thermometer, Gauge, Crosshair,
   Box, Users, Ruler, Fuel, Rocket, Loader2, Target, Radio,
-  ChevronDown, Heart, Share2, Wrench, Check,
+  ChevronDown, Heart, Share2, Wrench, Check, Tag, History, X,
 } from "lucide-react";
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend,
+} from 'recharts';
 import { useTranslation } from "react-i18next";
 import { useVersion } from "@/contexts/VersionContext";
 import { apiFetch, API_URL } from "@/lib/api";
@@ -59,6 +63,8 @@ interface ShipDetail {
   insuranceMandatoryWait:  number | null;
   insuranceExpeditingFee:  number | null;
   image:                   string | null;
+  price:                   number | null;
+  priceEur:                number | null;
   loadout:                 LoadoutEntry[];
   stats:                   ShipStats | null;
   version:                 { id: number; label: string } | null;
@@ -206,13 +212,16 @@ const LoadoutRow = ({ entry, t }: { entry: LoadoutEntry; t: (k: string) => strin
 
 const ShipDetail = () => {
   const { id }             = useParams<{ id: string }>();
-  const { t }              = useTranslation();
+  const { t, i18n }        = useTranslation();
   const { selectedVersion } = useVersion();
 
-  const [ship,    setShip]    = useState<ShipDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(false);
-  const [copied,  setCopied]  = useState(false);
+  const [ship,         setShip]         = useState<ShipDetail | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(false);
+  const [copied,       setCopied]       = useState(false);
+  const [showHistory,  setShowHistory]  = useState(false);
+  const [priceHistory, setPriceHistory] = useState<{ priceUsd: number; priceEur: number; recordedAt: string }[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -246,6 +255,20 @@ const ShipDetail = () => {
   );
 
   const crew = crewLabel(ship.minCrew, ship.maxCrew);
+
+  const openHistory = async () => {
+    setShowHistory(true);
+    if (priceHistory !== null) return;
+    setHistoryLoading(true);
+    try {
+      const data = await apiFetch<{ priceUsd: number; priceEur: number; recordedAt: string }[]>(`/api/ships/${id}/price-history`);
+      setPriceHistory(data);
+    } catch {
+      setPriceHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -367,6 +390,52 @@ const ShipDetail = () => {
                 <Spec icon={Box}   label={t("shipDetail.cargo")}   value={ship.cargo != null ? `${ship.cargo} SCU` : null} />
                 {ship.insuranceBaseWait != null && (
                   <Spec icon={Rocket} label="Insurance" value={`${ship.insuranceBaseWait} min`} />
+                )}
+                {(ship.priceEur != null || ship.price != null) && (
+                  <div className="rounded-lg border border-border bg-card p-3">
+                    <div className="flex items-center justify-between gap-2 text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-3.5 w-3.5" />
+                        <span className="text-xs">Prix boutique</span>
+                      </div>
+                      <button
+                        onClick={openHistory}
+                        title="Historique des prix"
+                        className="rounded p-0.5 text-muted-foreground/50 transition-colors hover:text-primary"
+                      >
+                        <History className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      {i18n.language === 'en' ? (
+                        <>
+                          {ship.price != null && (
+                            <span className="font-mono text-sm font-semibold text-foreground">
+                              ${ship.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          )}
+                          {ship.priceEur != null && (
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {ship.priceEur.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {ship.priceEur != null && (
+                            <span className="font-mono text-sm font-semibold text-foreground">
+                              {ship.priceEur.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                            </span>
+                          )}
+                          {ship.price != null && (
+                            <span className="font-mono text-xs text-muted-foreground">
+                              ${ship.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -536,6 +605,118 @@ const ShipDetail = () => {
         )}
 
       </div>
+
+      {/* Historique des prix — modale */}
+      {showHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Overlay */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowHistory(false)}
+          />
+
+          {/* Modale */}
+          <div className="relative z-10 flex w-full max-w-2xl flex-col rounded-xl border border-border bg-background shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-sm text-foreground">
+                  Historique des prix — {ship.name}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Contenu */}
+            <div className="px-5 py-5">
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              ) : !priceHistory?.length ? (
+                <p className="py-12 text-center text-sm italic text-muted-foreground/50">
+                  Aucun historique disponible.
+                </p>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <LineChart
+                      data={[...priceHistory].reverse()}
+                      margin={{ top: 4, right: 8, left: 0, bottom: 4 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis
+                        dataKey="recordedAt"
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        tickFormatter={v => v.slice(5)}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        tickFormatter={v => `$${v}`}
+                        domain={['auto', 'auto']}
+                        width={48}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: 12,
+                        }}
+                        formatter={(value: number, name: string) =>
+                          name === 'USD'
+                            ? [`$${value.toFixed(2)}`, 'USD']
+                            : [`${value.toFixed(2)} €`, 'EUR']
+                        }
+                        labelFormatter={l => `📅 ${l}`}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="priceUsd"
+                        name="USD"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        dot={priceHistory.length <= 30}
+                        activeDot={{ r: 4 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="priceEur"
+                        name="EUR"
+                        stroke="hsl(var(--accent))"
+                        strokeWidth={2}
+                        dot={priceHistory.length <= 30}
+                        activeDot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+
+                  {/* Dernier relevé */}
+                  <div className="mt-4 flex justify-between rounded-lg border border-border bg-secondary/20 px-3 py-2 text-xs text-muted-foreground">
+                    <span>Dernier relevé — {priceHistory[0].recordedAt}</span>
+                    <div className="flex gap-3">
+                      <span className="font-mono font-semibold text-primary">
+                        ${priceHistory[0].priceUsd.toFixed(2)}
+                      </span>
+                      <span className="font-mono font-semibold text-accent">
+                        {priceHistory[0].priceEur.toFixed(2)} €
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
