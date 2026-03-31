@@ -5,7 +5,7 @@ import {
   Rocket, Search, RefreshCw, Loader2, ChevronLeft, ChevronRight,
   ChevronDown, ExternalLink, Users, Box, Ruler, Shield,
   Zap, Thermometer, Gauge, Crosshair, Fuel, Radio, Target,
-  Upload, Trash2, ImageIcon,
+  Upload, Trash2, ImageIcon, Eye, EyeOff,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +20,7 @@ interface AdminShip {
   dataId:       number;
   internalName: string;
   image:        string | null;
+  isPublished:  boolean;
   name:         string;
   manufacturer: string | null;
   career:       string | null;
@@ -362,7 +363,7 @@ function ExpandedRow({
 }) {
   return (
     <tr className="bg-card">
-      <td colSpan={8} className="p-0">
+      <td colSpan={9} className="p-0">
         {/* Info bar */}
         <div className="border-t border-border bg-secondary/5 px-4 py-2.5 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
           <span className="font-mono text-muted-foreground/40">{ship.internalName}</span>
@@ -426,9 +427,10 @@ const ShipsAdmin = () => {
   const [search, setSearch]           = useState('');
   const [page, setPage]               = useState(1);
   const [expanded, setExpanded]       = useState<number | null>(null);
-  const [filterManuf, setFilterManuf] = useState('');
-  const [filterCareer, setFilterCareer] = useState('');
-  const [filterRole, setFilterRole]   = useState('');
+  const [filterManuf, setFilterManuf]         = useState('');
+  const [filterCareer, setFilterCareer]       = useState('');
+  const [filterRole, setFilterRole]           = useState('');
+  const [filterPublished, setFilterPublished] = useState<'' | 'true' | 'false'>('');
 
   useEffect(() => {
     if (!authLoading && (!user || !user.roles?.includes('ROLE_ADMIN'))) {
@@ -436,7 +438,7 @@ const ShipsAdmin = () => {
     }
   }, [authLoading, user, router]);
 
-  const load = useCallback(async (p = page, q = search, manuf = filterManuf, career = filterCareer, role = filterRole) => {
+  const load = useCallback(async (p = page, q = search, manuf = filterManuf, career = filterCareer, role = filterRole, pub = filterPublished) => {
     if (!user?.roles?.includes('ROLE_ADMIN')) return;
     setLoading(true);
     setError(null);
@@ -446,6 +448,7 @@ const ShipsAdmin = () => {
       if (manuf)  params.set('manufacturer', manuf);
       if (career) params.set('career', career);
       if (role)   params.set('role', role);
+      if (pub)    params.set('published', pub);
       if (selectedVersion) params.set('version', String(selectedVersion.id));
       const result = await apiFetch<Page>(`/api/admin/ships?${params}`);
       setData(result);
@@ -454,7 +457,28 @@ const ShipsAdmin = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterManuf, filterCareer, filterRole, user, selectedVersion]);
+  }, [page, search, filterManuf, filterCareer, filterRole, filterPublished, user, selectedVersion]);
+
+  const togglePublish = async (ship: AdminShip) => {
+    const newValue = !ship.isPublished;
+    // Optimistic update
+    setData(prev => prev ? {
+      ...prev,
+      items: prev.items.map(s => s.id === ship.id ? { ...s, isPublished: newValue } : s),
+    } : prev);
+    try {
+      await apiFetch(`/api/admin/ships/${ship.id}/publish`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isPublished: newValue }),
+      });
+    } catch {
+      // Rollback on error
+      setData(prev => prev ? {
+        ...prev,
+        items: prev.items.map(s => s.id === ship.id ? { ...s, isPublished: !newValue } : s),
+      } : prev);
+    }
+  };
 
   // Charger les filtres disponibles
   useEffect(() => {
@@ -470,7 +494,7 @@ const ShipsAdmin = () => {
   // Debounce recherche
   useEffect(() => {
     if (!user?.roles?.includes('ROLE_ADMIN')) return;
-    const t = setTimeout(() => { setPage(1); load(1, search, filterManuf, filterCareer, filterRole); }, 350);
+    const t = setTimeout(() => { setPage(1); load(1, search, filterManuf, filterCareer, filterRole, filterPublished); }, 350);
     return () => clearTimeout(t);
   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -478,10 +502,10 @@ const ShipsAdmin = () => {
   useEffect(() => {
     if (!user?.roles?.includes('ROLE_ADMIN')) return;
     setPage(1);
-    load(1, search, filterManuf, filterCareer, filterRole);
-  }, [filterManuf, filterCareer, filterRole]); // eslint-disable-line react-hooks/exhaustive-deps
+    load(1, search, filterManuf, filterCareer, filterRole, filterPublished);
+  }, [filterManuf, filterCareer, filterRole, filterPublished]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const goPage = (p: number) => { setPage(p); load(p, search, filterManuf, filterCareer, filterRole); };
+  const goPage = (p: number) => { setPage(p); load(p, search, filterManuf, filterCareer, filterRole, filterPublished); };
 
   const updateShipImage = (id: number, image: string | null) => {
     setData(prev => prev ? {
@@ -589,16 +613,28 @@ const ShipsAdmin = () => {
               </select>
             )}
 
+            {/* Publié / Non publié */}
+            <select
+              value={filterPublished}
+              onChange={e => setFilterPublished(e.target.value as '' | 'true' | 'false')}
+              className="h-10 rounded-lg border border-border bg-card px-3 text-sm text-foreground focus:border-primary focus:outline-none"
+            >
+              <option value="">Tous</option>
+              <option value="true">Publiés</option>
+              <option value="false">Non publiés</option>
+            </select>
+
             {/* Reset filters */}
-            {(filterManuf || filterCareer || filterRole || search) && (
+            {(filterManuf || filterCareer || filterRole || filterPublished || search) && (
               <button
                 onClick={() => {
                   setSearch('');
                   setFilterManuf('');
                   setFilterCareer('');
                   setFilterRole('');
+                  setFilterPublished('');
                   setPage(1);
-                  load(1, '', '', '', '');
+                  load(1, '', '', '', '', '');
                 }}
                 className="h-10 rounded-lg border border-border bg-card px-3 text-xs text-muted-foreground hover:text-foreground"
               >
@@ -635,6 +671,7 @@ const ShipsAdmin = () => {
                         <Box className="inline h-3.5 w-3.5" />
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Carrière</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Publié</th>
                       <th className="px-4 py-3 w-8" />
                     </tr>
                   </thead>
@@ -676,6 +713,22 @@ const ShipsAdmin = () => {
                             <td className="px-4 py-3 hidden xl:table-cell">
                               <p className="text-xs text-muted-foreground">{ship.career ?? '—'}</p>
                             </td>
+                            <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => togglePublish(ship)}
+                                title={ship.isPublished ? 'Dépublier' : 'Publier'}
+                                className={`inline-flex items-center justify-center rounded-full p-1.5 transition-colors ${
+                                  ship.isPublished
+                                    ? 'text-emerald-400 hover:bg-emerald-500/10'
+                                    : 'text-muted-foreground/30 hover:bg-secondary hover:text-muted-foreground'
+                                }`}
+                              >
+                                {ship.isPublished
+                                  ? <Eye className="h-4 w-4" />
+                                  : <EyeOff className="h-4 w-4" />
+                                }
+                              </button>
+                            </td>
                             <td className="px-4 py-3 text-right">
                               <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                             </td>
@@ -688,7 +741,7 @@ const ShipsAdmin = () => {
                     })}
                     {data?.items.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                        <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
                           Aucun vaisseau trouvé.
                         </td>
                       </tr>
