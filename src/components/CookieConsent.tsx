@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Script from 'next/script';
 import { Cookie, Check, ShieldCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const STORAGE_KEY = 'cookie_consent';
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
@@ -33,6 +34,9 @@ function denyConsent() {
 }
 
 export default function CookieConsent() {
+  const { i18n } = useTranslation();
+  const isFr = i18n.language === 'fr';
+
   const [consent, setConsent] = useState<Consent>(null);
   const [visible, setVisible] = useState(false);
 
@@ -152,7 +156,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:p-6"
           role="dialog"
           aria-modal="true"
-          aria-label="Gestion des cookies"
+          aria-label={isFr ? 'Gestion des cookies' : 'Cookie settings'}
         >
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
           <div className="relative z-10 w-full max-w-4xl rounded-2xl border border-border bg-card shadow-2xl shadow-black/40">
@@ -164,19 +168,30 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground">
-                  Ce site utilise des cookies
+                  {isFr ? 'Ce site utilise des cookies' : 'This site uses cookies'}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Nous utilisons des cookies pour analyser le trafic (Google Analytics) et
-                  diffuser des publicités (Google AdSense). Si vous refusez, Google Analytics
-                  sera désactivé et AdSense affichera uniquement des{' '}
-                  <span className="font-medium text-foreground">annonces non personnalisées</span>{' '}
-                  (sans suivi).{' '}
+                  {isFr ? (
+                    <>
+                      Nous utilisons des cookies pour analyser le trafic (Google Analytics) et
+                      diffuser des publicités (Google AdSense). Si vous refusez, Google Analytics
+                      sera désactivé et AdSense affichera uniquement des{' '}
+                      <span className="font-medium text-foreground">annonces non personnalisées</span>{' '}
+                      (sans suivi).{' '}
+                    </>
+                  ) : (
+                    <>
+                      We use cookies to analyse traffic (Google Analytics) and display ads (Google AdSense).
+                      If you decline, Google Analytics will be disabled and AdSense will only show{' '}
+                      <span className="font-medium text-foreground">non-personalised ads</span>{' '}
+                      (no tracking).{' '}
+                    </>
+                  )}
                   <Link
                     href="/legal/cookies"
                     className="underline underline-offset-2 hover:text-foreground transition-colors"
                   >
-                    En savoir plus
+                    {isFr ? 'En savoir plus' : 'Learn more'}
                   </Link>
                 </p>
               </div>
@@ -186,14 +201,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                   onClick={refuse}
                   className="text-xs text-muted-foreground/50 underline underline-offset-2 hover:text-muted-foreground transition-colors"
                 >
-                  Refuser
+                  {isFr ? 'Refuser' : 'Decline'}
                 </button>
                 <button
                   onClick={accept}
                   className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
                 >
                   <Check className="h-3.5 w-3.5" />
-                  Tout accepter
+                  {isFr ? 'Tout accepter' : 'Accept all'}
                 </button>
               </div>
 
@@ -201,7 +216,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
             <div className="flex items-center gap-1.5 border-t border-border/40 px-5 py-2.5 text-[10px] text-muted-foreground/60">
               <ShieldCheck className="h-3 w-3 shrink-0" />
-              Vous pouvez modifier votre choix à tout moment via le bouton &laquo;&nbsp;Gérer les cookies&nbsp;&raquo; en bas de page.
+              {isFr
+                ? <>Vous pouvez modifier votre choix à tout moment via le bouton &laquo;&nbsp;Gérer les cookies&nbsp;&raquo; en bas de page.</>
+                : <>You can change your choice at any time via the &ldquo;&nbsp;Manage cookies&nbsp;&rdquo; button at the bottom of the page.</>
+              }
             </div>
           </div>
         </div>

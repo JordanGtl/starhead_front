@@ -159,6 +159,7 @@ function parseConfig(raw: string): Record<string, number> {
 // ─── Stats Panel ──────────────────────────────────────────────────────────────
 
 function StatsPanel({ slots }: { slots: Record<string, ConfigSlot> }) {
+  const { t } = useTranslation();
   const values = Object.values(slots);
   const sum = (fn: (s: ConfigSlot) => number | null | undefined) =>
     values.reduce<number | null>((acc, s) => {
@@ -184,11 +185,11 @@ function StatsPanel({ slots }: { slots: Record<string, ConfigSlot> }) {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-4 py-3 bg-secondary/40 flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-          Statistiques
+          {t('configurator.stats')}
         </p>
         {modifiedCount > 0 && (
           <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-            {modifiedCount} modif.
+            {modifiedCount} {t('configurator.modified')}
           </span>
         )}
       </div>
@@ -199,18 +200,18 @@ function StatsPanel({ slots }: { slots: Record<string, ConfigSlot> }) {
           <div className="px-4 py-3">
             <div className="flex items-center gap-2 mb-2 text-amber-400">
               <Zap className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-semibold uppercase tracking-widest">Énergie</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest">{t('configurator.energy')}</span>
             </div>
             <div className="space-y-1.5">
               {powerGen != null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Générée</span>
+                  <span className="text-xs text-muted-foreground">{t('configurator.generated')}</span>
                   <span className="font-mono text-sm font-bold text-emerald-400">{powerGen.toLocaleString()} W</span>
                 </div>
               )}
               {powerCons != null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Consommée</span>
+                  <span className="text-xs text-muted-foreground">{t('configurator.consumed')}</span>
                   <span className="font-mono text-sm font-bold text-red-400">{powerCons.toLocaleString()} W</span>
                 </div>
               )}
@@ -231,18 +232,18 @@ function StatsPanel({ slots }: { slots: Record<string, ConfigSlot> }) {
           <div className="px-4 py-3">
             <div className="flex items-center gap-2 mb-2 text-blue-400">
               <Shield className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-semibold uppercase tracking-widest">Bouclier</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest">{t('configurator.shield')}</span>
             </div>
             <div className="space-y-1.5">
               {shieldHp != null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Points de vie</span>
+                  <span className="text-xs text-muted-foreground">{t('configurator.hitPoints')}</span>
                   <span className="font-mono text-sm font-bold text-foreground">{shieldHp.toLocaleString()}</span>
                 </div>
               )}
               {shieldRegen != null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Régén. / s</span>
+                  <span className="text-xs text-muted-foreground">{t('configurator.regenPerSec')}</span>
                   <span className="font-mono text-sm font-bold text-foreground">{shieldRegen.toLocaleString()}</span>
                 </div>
               )}
@@ -260,7 +261,7 @@ function StatsPanel({ slots }: { slots: Record<string, ConfigSlot> }) {
             <div className="space-y-1.5">
               {qdSpeed != null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Vitesse</span>
+                  <span className="text-xs text-muted-foreground">{t('configurator.speed')}</span>
                   <span className="font-mono text-sm font-bold text-foreground">{qdSpeed.toFixed(2)} Mm/s</span>
                 </div>
               )}
@@ -279,10 +280,10 @@ function StatsPanel({ slots }: { slots: Record<string, ConfigSlot> }) {
           <div className="px-4 py-3">
             <div className="flex items-center gap-2 mb-2 text-red-400">
               <Crosshair className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-semibold uppercase tracking-widest">Armement</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest">{t('configurator.weapons')}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">DPS total</span>
+              <span className="text-xs text-muted-foreground">{t('configurator.dpsTotal')}</span>
               <span className="font-mono text-sm font-bold text-foreground">{weaponDps.toLocaleString()}</span>
             </div>
           </div>
@@ -290,7 +291,7 @@ function StatsPanel({ slots }: { slots: Record<string, ConfigSlot> }) {
 
         {powerGen == null && shieldHp == null && qdSpeed == null && weaponDps == null && (
           <p className="px-4 py-4 text-xs italic text-muted-foreground/40">
-            Aucune statistique disponible.
+            {t('configurator.noStats')}
           </p>
         )}
       </div>
@@ -301,13 +302,13 @@ function StatsPanel({ slots }: { slots: Record<string, ConfigSlot> }) {
 // ─── Component Picker ─────────────────────────────────────────────────────────
 
 // Retourne la stat principale + son label pour un type donné
-function primaryStat(type: string, item: PickerItem): { value: number | null; label: string; unit: string } {
+function primaryStat(type: string, item: PickerItem, t: (key: string) => string): { value: number | null; label: string; unit: string } {
   switch (type) {
-    case 'PowerPlant':   return { value: item.statPowerOutput,  label: 'Puissance',  unit: 'W' };
-    case 'Cooler':       return { value: item.statCoolingRate,  label: 'Refroid.',   unit: 'W' };
-    case 'Shield':       return { value: item.statShieldHealth, label: 'Bouclier',   unit: 'HP' };
-    case 'QuantumDrive': return { value: item.statQdSpeed != null ? Math.round(item.statQdSpeed / 10_000) / 100 : null, label: 'Vitesse', unit: 'Mm/s' };
-    default:             return { value: item.health,           label: 'Vie',        unit: 'HP' };
+    case 'PowerPlant':   return { value: item.statPowerOutput,  label: t('configurator.statPower'),   unit: 'W' };
+    case 'Cooler':       return { value: item.statCoolingRate,  label: t('configurator.statCooling'), unit: 'W' };
+    case 'Shield':       return { value: item.statShieldHealth, label: t('configurator.statShield'),  unit: 'HP' };
+    case 'QuantumDrive': return { value: item.statQdSpeed != null ? Math.round(item.statQdSpeed / 10_000) / 100 : null, label: t('configurator.statSpeed'), unit: 'Mm/s' };
+    default:             return { value: item.health,           label: t('configurator.statHealth'),  unit: 'HP' };
   }
 }
 
@@ -375,7 +376,7 @@ function ComponentPicker({
           <Icon className={`h-4 w-4 shrink-0 ${color}`} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">{componentTypeLabel(slot.type, t)}</p>
-            <p className="text-[11px] text-muted-foreground capitalize">{portLabel}{slot.size != null && ` — taille max S${slot.size}`}</p>
+            <p className="text-[11px] text-muted-foreground capitalize">{portLabel}{slot.size != null && ` — ${t('configurator.maxSize')}${slot.size}`}</p>
           </div>
           <button onClick={onClose} className="rounded-md p-1.5 text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
@@ -389,7 +390,7 @@ function ComponentPicker({
             ref={inputRef}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher..."
+            placeholder={t('configurator.searchComponent')}
             className="w-full bg-transparent pl-9 pr-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
         </div>
@@ -401,7 +402,7 @@ function ComponentPicker({
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : filtered.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun composant trouvé.</p>
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t('configurator.noComponent')}</p>
           ) : (
             <div className="divide-y divide-border">
               {/* Option : vider le slot */}
@@ -410,10 +411,10 @@ function ComponentPicker({
                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/30 transition-colors"
               >
                 <X className="h-4 w-4 shrink-0 text-muted-foreground/40" />
-                <span className="text-sm italic text-muted-foreground/60">Vider le slot</span>
+                <span className="text-sm italic text-muted-foreground/60">{t('configurator.clearSlot')}</span>
               </button>
               {filtered.map(item => {
-                const ps      = primaryStat(slot.type, item);
+                const ps      = primaryStat(slot.type, item, t);
                 const current = currentStatValue(slot.type, slot.stats);
                 const delta   = ps.value != null && current != null ? ps.value - current : null;
                 const isActive = slot.itemId === item.id;
@@ -489,7 +490,7 @@ function SlotCard({
         <Icon className={`h-4 w-4 shrink-0 ${color}`} />
         <div className="min-w-0 flex-1">
           <p className={`truncate text-sm font-medium ${slot.itemId ? 'text-foreground' : 'text-muted-foreground/50 italic'}`}>
-            {slot.itemName ?? 'Vide'}
+            {slot.itemName ?? t('configurator.empty')}
           </p>
           <p className="text-[10px] text-muted-foreground/60 capitalize">{portLabel}</p>
         </div>
@@ -520,6 +521,7 @@ function ShipSearch({ onSelect }: { onSelect: (ship: ShipSummary) => void }) {
   const [results, setResults] = useState<ShipSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const { selectedVersion } = useVersion();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!query || query.length < 2) { setResults([]); return; }
@@ -565,14 +567,14 @@ function ShipSearch({ onSelect }: { onSelect: (ship: ShipSummary) => void }) {
           {/* Badge */}
           <div className="mb-5 flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5">
             <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
-            <span className="font-display text-xs font-semibold uppercase tracking-widest text-primary">Outils — Configurateur</span>
+            <span className="font-display text-xs font-semibold uppercase tracking-widest text-primary">{t('configurator.overline')}</span>
           </div>
 
           <h1 className="font-display text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-            Configurateur de vaisseau
+            {t('configurator.title')}
           </h1>
           <p className="mt-3 max-w-md text-center text-sm text-muted-foreground">
-            Sélectionnez un vaisseau, personnalisez ses composants et partagez votre configuration optimale.
+            {t('configurator.subtitle')}
           </p>
 
           {/* Barre de recherche */}
@@ -583,7 +585,7 @@ function ShipSearch({ onSelect }: { onSelect: (ship: ShipSummary) => void }) {
                 autoFocus
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Rechercher un vaisseau..."
+                placeholder={t('configurator.searchPlaceholder')}
                 className="h-13 w-full rounded-xl border border-border bg-card/80 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground backdrop-blur focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-lg"
                 style={{ height: '3.25rem' }}
               />
@@ -615,9 +617,9 @@ function ShipSearch({ onSelect }: { onSelect: (ship: ShipSummary) => void }) {
       <div className="container mx-auto max-w-4xl px-4 py-12">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
-            { icon: Rocket,           color: 'text-primary',    label: 'Choisissez votre vaisseau',         desc: 'Recherchez parmi tous les vaisseaux disponibles.' },
-            { icon: SlidersHorizontal, color: 'text-violet-400', label: 'Personnalisez les composants',      desc: 'Remplacez chaque composant par les meilleures options.' },
-            { icon: Share2,           color: 'text-emerald-400', label: 'Partagez votre configuration',     desc: 'Générez un lien pour partager votre loadout optimal.' },
+            { icon: Rocket,           color: 'text-primary',    label: t('configurator.feature1Label'), desc: t('configurator.feature1Desc') },
+            { icon: SlidersHorizontal, color: 'text-violet-400', label: t('configurator.feature2Label'), desc: t('configurator.feature2Desc') },
+            { icon: Share2,           color: 'text-emerald-400', label: t('configurator.feature3Label'), desc: t('configurator.feature3Desc') },
           ].map(({ icon: Icon, color, label, desc }) => (
             <div key={label} className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/60 px-5 py-6 text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-secondary">
@@ -862,19 +864,19 @@ const ShipConfigurator = () => {
         <div className="container pb-4 pt-8">
           <Link href={ship ? `/ships/${ship.id}` : '/ships'} className="mb-3 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
             <ArrowLeft className="h-4 w-4" />
-            {ship ? ship.name : 'Vaisseaux'}
+            {ship ? ship.name : t('configurator.backToShips')}
           </Link>
 
           <div className="flex items-end justify-between gap-4">
             <div>
               <div className="mb-1 flex items-center gap-2">
                 <Wrench className="h-4 w-4 text-primary" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-primary">Configurateur</span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t('configurator.configurator')}</span>
               </div>
               {loading ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  <span className="text-muted-foreground">Chargement...</span>
+                  <span className="text-muted-foreground">{t('configurator.loading')}</span>
                 </div>
               ) : (
                 <>
@@ -892,7 +894,7 @@ const ShipConfigurator = () => {
                     className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/80 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    <span className="hidden sm:inline">Réinitialiser</span>
+                    <span className="hidden sm:inline">{t('configurator.reset')}</span>
                   </button>
                 )}
                 {isAuthenticated && (
@@ -901,7 +903,7 @@ const ShipConfigurator = () => {
                     className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/80 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <BookmarkPlus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Sauvegarder</span>
+                    <span className="hidden sm:inline">{t('configurator.save')}</span>
                   </button>
                 )}
                 <button
@@ -909,8 +911,8 @@ const ShipConfigurator = () => {
                   className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
                 >
                   {copied
-                    ? <><Check className="h-4 w-4 text-emerald-400" /><span className="hidden sm:inline text-emerald-400">Copié !</span></>
-                    : <><Share2 className="h-4 w-4" /><span className="hidden sm:inline">Partager</span></>
+                    ? <><Check className="h-4 w-4 text-emerald-400" /><span className="hidden sm:inline text-emerald-400">{t('configurator.copied')}</span></>
+                    : <><Share2 className="h-4 w-4" /><span className="hidden sm:inline">{t('configurator.share')}</span></>
                   }
                 </button>
               </div>
@@ -928,7 +930,7 @@ const ShipConfigurator = () => {
             <div className="col-span-12 lg:col-span-8 rounded-xl border border-border bg-card overflow-hidden">
               <div className="px-4 py-3 bg-secondary/40 flex items-center justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                  Équipements
+                  {t('configurator.equipments')}
                   <span className="ml-2 font-normal text-muted-foreground/40">({Object.keys(slots).length})</span>
                 </p>
                 {modifiedCount > 0 && (
@@ -975,7 +977,7 @@ const ShipConfigurator = () => {
                   <div className="px-4 py-3 bg-secondary/40 flex items-center gap-2">
                     <Bookmark className="h-3.5 w-3.5 text-muted-foreground/60" />
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 flex-1">
-                      Configs sauvegardées
+                      {t('configurator.savedConfigs')}
                     </p>
                     <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">{loadouts.length}</span>
                   </div>
@@ -1009,7 +1011,7 @@ const ShipConfigurator = () => {
                 className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ExternalLink className="h-4 w-4" />
-                Voir la fiche du vaisseau
+                {t('configurator.viewShip')}
               </Link>
 
               {/* Changer de vaisseau */}
@@ -1018,7 +1020,7 @@ const ShipConfigurator = () => {
                 className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
               >
                 <Rocket className="h-4 w-4" />
-                Changer de vaisseau
+                {t('configurator.changeShip')}
               </button>
             </div>
 
@@ -1031,13 +1033,13 @@ const ShipConfigurator = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSaveModal(false)} />
           <div className="relative z-10 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
-            <h2 className="mb-4 font-display text-lg font-bold text-foreground">Sauvegarder la configuration</h2>
+            <h2 className="mb-4 font-display text-lg font-bold text-foreground">{t('configurator.saveConfig')}</h2>
             <input
               autoFocus
               value={saveName}
               onChange={e => setSaveName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSave()}
-              placeholder="Nom de la configuration..."
+              placeholder={t('configurator.configNamePlaceholder')}
               className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <div className="mt-4 flex gap-2 justify-end">
@@ -1045,7 +1047,7 @@ const ShipConfigurator = () => {
                 onClick={() => setSaveModal(false)}
                 className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Annuler
+                {t('configurator.cancel')}
               </button>
               <button
                 onClick={handleSave}
@@ -1053,7 +1055,7 @@ const ShipConfigurator = () => {
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookmarkPlus className="h-4 w-4" />}
-                Sauvegarder
+                {t('configurator.save')}
               </button>
             </div>
           </div>

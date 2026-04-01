@@ -225,6 +225,12 @@ const PROPERTY_TRANSLATIONS: Record<string, Record<string, string>> = {
     "recoil kick":        "Coup de recul",
     "impact force":       "Force d'impact",
   },
+  en: {
+    "douceur du recul":   "Recoil Smoothness",
+    "gestion du recul":   "Recoil Handling",
+    "coup de recul":      "Recoil Kick",
+    "force d'impact":     "Impact Force",
+  },
 };
 
 function translateProperty(name: string | null, locale: string): string | null {
@@ -243,6 +249,7 @@ const QualityPanel = ({ tiers, qualities, setQualities, selOpt, setSelOpt, local
   setSelOpt:    React.Dispatch<React.SetStateAction<Record<string, number>>>;
   locale:       string;
 }) => {
+  const { t } = useTranslation();
   const slots = useMemo(() => {
     const acc: CraftingSlot[] = [];
     for (const tier of tiers) {
@@ -254,7 +261,7 @@ const QualityPanel = ({ tiers, qualities, setQualities, selOpt, setSelOpt, local
 
   if (!slots.length) return (
     <p className="py-8 text-center text-sm italic text-muted-foreground/50">
-      Aucune propriété craftable pour ce blueprint.
+      {t('tools.crafting.noProps')}
     </p>
   );
 
@@ -339,7 +346,7 @@ const QualityPanel = ({ tiers, qualities, setQualities, selOpt, setSelOpt, local
               {/* Slider */}
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Qualité</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">{t('tools.crafting.quality')}</span>
                   <input
                     type="number" min={0} max={1000} step={50} value={q}
                     onChange={e => setQualities(p => ({ ...p, [slot.key]: Math.max(0, Math.min(1000, Number(e.target.value))) }))}
@@ -394,6 +401,7 @@ const BlueprintConfigurator = ({
   const [added, setAdded]         = useState(false);
   const [qualities, setQualities] = useState<Record<string, number>>({});
   const [selOpt, setSelOpt]       = useState<Record<string, number>>({});
+  const { t } = useTranslation();
 
   useEffect(() => {
     setLoading(true);
@@ -453,7 +461,7 @@ const BlueprintConfigurator = ({
   if (!detail) return (
     <div className="flex h-64 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
       <AlertCircle className="h-5 w-5" />
-      Impossible de charger le blueprint
+      {t('tools.crafting.loadError')}
     </div>
   );
 
@@ -463,9 +471,9 @@ const BlueprintConfigurator = ({
   const hasTiers  = detail.tiers && detail.tiers.length > 1;
 
   const tabs: { id: DetailTab; label: string; count?: number }[] = [
-    { id: "recipe",     label: "Recette",    count: mandatory.length },
-    { id: "obtain",     label: "Obtenir",    count: detail.rewardPools?.length },
-    { id: "properties", label: "Propriétés" },
+    { id: "recipe",     label: t('tools.crafting.tabRecipe'),     count: mandatory.length },
+    { id: "obtain",     label: t('tools.crafting.tabObtain'),     count: detail.rewardPools?.length },
+    { id: "properties", label: t('tools.crafting.tabProperties') },
   ];
 
   return (
@@ -531,9 +539,9 @@ const BlueprintConfigurator = ({
                     }`}
                   >
                     {added ? (
-                      <><Check className="h-3.5 w-3.5" /> Ajouté</>
+                      <><Check className="h-3.5 w-3.5" /> {t('tools.crafting.addedBadge')}</>
                     ) : (
-                      <><ShoppingCart className="h-3.5 w-3.5" /> Ajouter à l&apos;inventaire</>
+                      <><ShoppingCart className="h-3.5 w-3.5" /> {t('tools.crafting.addToInventory')}</>
                     )}
                   </button>
                 </div>
@@ -575,7 +583,7 @@ const BlueprintConfigurator = ({
             {mandatory.length > 0 ? (
               <div>
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                  Obligatoires
+                  {t('tools.crafting.mandatory')}
                 </p>
                 <div className="grid gap-1.5 sm:grid-cols-2">
                   {mandatory.map(ing => (
@@ -595,14 +603,14 @@ const BlueprintConfigurator = ({
               </div>
             ) : (
               <p className="py-6 text-center text-sm italic text-muted-foreground/50">
-                Aucun ingrédient enregistré.
+                {t('tools.crafting.noIngredients')}
               </p>
             )}
 
             {optional.length > 0 && (
               <div>
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                  Optionnels
+                  {t('tools.crafting.optional')}
                 </p>
                 <div className="grid gap-1.5 sm:grid-cols-2">
                   {optional.map(ing => (
@@ -621,7 +629,7 @@ const BlueprintConfigurator = ({
 
             {hasTiers && (
               <p className="text-[11px] text-muted-foreground/50 italic">
-                + {detail.tiers!.length - 1} tier{detail.tiers!.length > 2 ? "s" : ""} supplémentaire{detail.tiers!.length > 2 ? "s" : ""} disponible{detail.tiers!.length > 2 ? "s" : ""}
+                {t('tools.crafting.extraTiers', { count: detail.tiers!.length - 1 })}
               </p>
             )}
           </div>
@@ -632,7 +640,7 @@ const BlueprintConfigurator = ({
             {detail.rewardPools?.length ? (
               <div className="space-y-2">
                 <p className="mb-3 text-xs text-muted-foreground">
-                  Ce blueprint peut être obtenu en récompense des missions suivantes :
+                  {t('tools.crafting.obtainDesc')}
                 </p>
                 {detail.rewardPools.map(pool => (
                   <div key={pool} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
@@ -649,7 +657,7 @@ const BlueprintConfigurator = ({
             ) : (
               <div className="flex flex-col items-center py-10 text-center text-muted-foreground">
                 <Award className="mb-3 h-8 w-8 opacity-20" />
-                <p className="text-sm">Aucune mission connue pour ce blueprint.</p>
+                <p className="text-sm">{t('tools.crafting.noMissions')}</p>
               </div>
             )}
           </div>
@@ -681,6 +689,7 @@ const CartInlineEditor = ({ qi, locale, onSave, onCancel }: {
 }) => {
   const [qualities, setQualities] = useState<Record<string, number>>(qi.qualities);
   const [selOpt,    setSelOpt]    = useState<Record<string, number>>(qi.selOpt);
+  const { t } = useTranslation();
 
   const buildSQ = (q: Record<string, number>, s: Record<string, number>): SlotQuality[] =>
     qi.slots.map(slot => {
@@ -750,11 +759,11 @@ const CartInlineEditor = ({ qi, locale, onSave, onCancel }: {
       <div className="flex gap-2 pt-1">
         <button onClick={() => onSave(qualities, selOpt, buildSQ(qualities, selOpt))}
           className="flex-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors">
-          Sauvegarder
+          {t('tools.crafting.save')}
         </button>
         <button onClick={onCancel}
           className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          Annuler
+          {t('tools.crafting.cancel')}
         </button>
       </div>
     </div>
@@ -778,6 +787,7 @@ const CartSidebar = ({
   const [matOpen,   setMatOpen]   = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [savedIds,  setSavedIds]  = useState<Set<number>>(new Set());
+  const { t } = useTranslation();
 
   const totalsMap = useMemo(() => computeTotals(queue), [queue]);
   const craftTime = useMemo(() => totalCraftTime(queue), [queue]);
@@ -797,8 +807,8 @@ const CartSidebar = ({
   if (!queue.length) return (
     <div className="flex flex-col items-center rounded-xl border border-dashed border-border/50 py-16 text-center text-muted-foreground">
       <ShoppingCart className="mb-3 h-8 w-8 opacity-20" />
-      <p className="text-sm font-medium">Inventaire vide</p>
-      <p className="mt-1 text-xs opacity-60">Ajoutez des blueprints depuis le catalogue</p>
+      <p className="text-sm font-medium">{t('tools.crafting.inventoryEmpty')}</p>
+      <p className="mt-1 text-xs opacity-60">{t('tools.crafting.addFromCatalog')}</p>
     </div>
   );
 
@@ -815,7 +825,7 @@ const CartSidebar = ({
           >
             <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Package className="h-4 w-4 text-primary" />
-              Matériaux
+              {t('tools.crafting.materials')}
               <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-normal text-muted-foreground">
                 {checkedCount}/{totalsMap.size}
               </span>
@@ -890,10 +900,10 @@ const CartSidebar = ({
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <ShoppingCart className="h-4 w-4 text-primary" />
-            Inventaire ({queue.length})
+            {t('tools.crafting.inventory')} ({queue.length})
           </p>
           <button onClick={onReset} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors">
-            <RotateCcw className="h-3 w-3" /> Vider
+            <RotateCcw className="h-3 w-3" /> {t('tools.crafting.clearInventory')}
           </button>
         </div>
         <div className="divide-y divide-border/50">
@@ -944,7 +954,7 @@ const CartSidebar = ({
                       setSavedIds(p => new Set(p).add(qi.id));
                       setTimeout(() => setSavedIds(p => { const n = new Set(p); n.delete(qi.id); return n; }), 2000);
                     }}
-                    title="Sauvegarder dans l'inventaire"
+                    title={t('tools.crafting.saveToInventory')}
                     className={`flex h-6 w-6 items-center justify-center rounded border transition-colors ${
                       savedIds.has(qi.id)
                         ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
@@ -1008,8 +1018,8 @@ const CraftingSimulator = () => {
   const { save: saveToInventory, crafts: savedCrafts, loaded: inventoryLoaded } = useCraftingInventory();
 
   useSEO({
-    title: "Simulateur de craft",
-    description: "Simulez vos recettes de fabrication dans Star Citizen.",
+    title: t('tools.crafting.seoTitle'),
+    description: t('tools.crafting.seoDesc'),
     path: "/tools/crafting",
   });
 
@@ -1151,13 +1161,13 @@ const CraftingSimulator = () => {
     <div className="relative min-h-screen bg-background">
       <PageHeader
         breadcrumb={[
-          { label: "Outils", href: "/tools", icon: FlaskConical },
-          { label: "Simulateur de craft" },
+          { label: t('tools.hub.overline'), href: "/tools", icon: FlaskConical },
+          { label: t('tools.crafting.seoTitle') },
         ]}
-        title="Simulateur de craft"
-        label="Outils"
+        title={t('tools.crafting.seoTitle')}
+        label={t('tools.hub.overline')}
         labelIcon={FlaskConical}
-        subtitle="Simulez vos recettes de fabrication dans Star Citizen."
+        subtitle={t('tools.crafting.seoDesc')}
         bgImage="/images/crafting-bg.webp"
       />
 
@@ -1170,7 +1180,7 @@ const CraftingSimulator = () => {
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              Retour à la liste
+              {t('tools.crafting.backToList')}
             </button>
           </div>
         </div>
@@ -1189,7 +1199,7 @@ const CraftingSimulator = () => {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
                     type="text" value={query} onChange={e => setQuery(e.target.value)}
-                    placeholder="Rechercher un blueprint…"
+                    placeholder={t('tools.crafting.searchPlaceholder')}
                     className="h-10 w-full rounded-lg border border-border bg-card pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none"
                   />
                   {query && (
@@ -1206,7 +1216,7 @@ const CraftingSimulator = () => {
                 ) : Object.keys(grouped).length === 0 ? (
                   <div className="flex flex-col items-center py-16 text-center text-muted-foreground">
                     <FlaskConical className="mb-3 h-10 w-10 opacity-20" />
-                    <p className="text-sm">{selectedVersion ? "Aucun résultat" : "Sélectionnez une version de jeu"}</p>
+                    <p className="text-sm">{selectedVersion ? t('tools.crafting.noResults') : t('tools.crafting.selectVersion')}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -1248,7 +1258,7 @@ const CraftingSimulator = () => {
                                     )}
                                     {queue.some(q => q.blueprintId === bp.id) && (
                                       <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                                        Ajouté
+                                        {t('tools.crafting.addedBadge')}
                                       </span>
                                     )}
                                     <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />

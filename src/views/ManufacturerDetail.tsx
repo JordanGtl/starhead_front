@@ -9,6 +9,8 @@ import { fetchShips, type Ship } from "@/data/ships";
 import { useSEO } from "@/hooks/useSEO";
 import PageHeader from "@/components/PageHeader";
 import ShipCard from "@/components/ShipCard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const ManufacturerDetail = () => {
   const { t, i18n } = useTranslation();
@@ -22,6 +24,9 @@ const ManufacturerDetail = () => {
   const [scrollState, setScrollState]   = useState({ left: false, right: true });
   const shipsRef    = useRef<HTMLDivElement>(null);
   const [shipsScroll, setShipsScroll]   = useState({ left: false, right: true });
+  const loreRef     = useRef<HTMLParagraphElement>(null);
+  const [loreOverflows, setLoreOverflows] = useState(false);
+  const [loreModalOpen, setLoreModalOpen] = useState(false);
 
   useSEO({
     title: manufacturer?.name,
@@ -55,6 +60,11 @@ const ManufacturerDetail = () => {
     if (!el) return;
     setScrollState({ left: false, right: el.scrollWidth > el.clientWidth });
   }, [manufacturer?.timeline]);
+
+  useEffect(() => {
+    if (!loreRef.current) return;
+    setLoreOverflows(loreRef.current.scrollHeight > 112);
+  }, [manufacturer?.lore, i18n.language]);
 
   const scrollBy = (ref: React.RefObject<HTMLDivElement | null>, dir: 'left' | 'right') => {
     const el = ref.current;
@@ -119,8 +129,18 @@ const ManufacturerDetail = () => {
         <div className="grid gap-6 lg:grid-cols-2">
 
           {/* Card principale */}
-          <div className="rounded-xl border border-border bg-card p-6">
-            <div className="flex items-start gap-5">
+          <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6">
+            {/* Logo en filigrane */}
+            {logoSrc && (
+              <img
+                src={logoSrc}
+                alt=""
+                aria-hidden
+                className="absolute right-0 top-1/2 -translate-y-1/2 h-[200%] w-[40%] object-contain object-right pointer-events-none select-none"
+                style={{ opacity: 0.02 }}
+              />
+            )}
+            <div className="relative flex items-start gap-5">
               <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-secondary">
                 {logoSrc
                   ? <img src={logoSrc} alt={`Logo ${manufacturer.name}`} className="h-14 w-14 object-contain" />
@@ -156,7 +176,7 @@ const ManufacturerDetail = () => {
               </div>
             </div>
             {manufacturer.description && (
-              <p className="mt-5 border-t border-border pt-5 text-sm leading-relaxed text-muted-foreground">
+              <p className="relative mt-5 border-t border-border pt-5 text-sm leading-relaxed text-muted-foreground">
                 {localize(manufacturer.description, i18n.language)}
               </p>
             )}
@@ -169,9 +189,42 @@ const ManufacturerDetail = () => {
                 <Building2 className="h-4 w-4 text-primary" />
                 {t("manufacturers.history")}
               </h2>
-              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
-                {localize(manufacturer.lore, i18n.language)}
-              </p>
+
+              {/* Contenu clippé à 112px */}
+              <div className="relative overflow-hidden" style={{ maxHeight: 112 }}>
+                <p ref={loreRef} className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                  {localize(manufacturer.lore, i18n.language)}
+                </p>
+                {/* Fondu bas si dépassement */}
+                {loreOverflows && (
+                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+                )}
+              </div>
+
+              {/* Bouton Lire plus */}
+              {loreOverflows && (
+                <button
+                  onClick={() => setLoreModalOpen(true)}
+                  className="mt-3 text-xs font-medium text-primary hover:underline transition-colors"
+                >
+                  {t("manufacturers.readMore")} →
+                </button>
+              )}
+
+              {/* Modale plein texte */}
+              <Dialog open={loreModalOpen} onOpenChange={setLoreModalOpen}>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-primary" />
+                      {t("manufacturers.history")} — {manufacturer.name}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                    {localize(manufacturer.lore, i18n.language)}
+                  </p>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
 
@@ -215,15 +268,26 @@ const ManufacturerDetail = () => {
                   .slice()
                   .sort((a, b) => a.date.replace(/[^0-9]/g, '').localeCompare(b.date.replace(/[^0-9]/g, '')))
                   .map((event, i) => (
-                    <div key={i} className="group relative flex flex-col" style={{ minWidth: 160, maxWidth: 200 }}>
-                      {/* Point aligné à gauche sur la ligne */}
-                      <div className="relative z-10 mb-3 h-[11px] w-[11px] shrink-0 rounded-full border-2 border-primary bg-card transition-colors group-hover:bg-primary" />
-                      <span className="font-mono text-[11px] font-bold text-primary">{event.date}</span>
-                      <span className="mt-1 text-xs font-semibold text-foreground leading-snug">{localize(event.title, i18n.language)}</span>
-                      {event.description && (
-                        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground line-clamp-3">{localize(event.description, i18n.language)}</p>
-                      )}
-                    </div>
+                    <Tooltip key={i} delayDuration={200}>
+                      <TooltipTrigger asChild>
+                        <div className="group relative flex flex-col cursor-default" style={{ minWidth: 160, maxWidth: 200 }}>
+                          {/* Point aligné à gauche sur la ligne */}
+                          <div className="relative z-10 mb-3 h-[11px] w-[11px] shrink-0 rounded-full border-2 border-primary bg-card transition-colors group-hover:bg-primary" />
+                          <span className="font-mono text-[11px] font-bold text-primary">{event.date}</span>
+                          <span className="mt-1 text-xs font-semibold text-foreground leading-snug">{localize(event.title, i18n.language)}</span>
+                          {event.description && (
+                            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground line-clamp-3">{localize(event.description, i18n.language)}</p>
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs space-y-1 whitespace-normal">
+                        <p className="font-mono text-[11px] font-bold text-primary">{event.date}</p>
+                        <p className="font-semibold">{localize(event.title, i18n.language)}</p>
+                        {event.description && (
+                          <p className="text-xs leading-relaxed opacity-80">{localize(event.description, i18n.language)}</p>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
                   ))
                 }
               </div>

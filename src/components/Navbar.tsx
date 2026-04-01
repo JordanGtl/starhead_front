@@ -8,16 +8,35 @@ import { useVersion } from "@/contexts/VersionContext";
 import { useTranslation } from "react-i18next";
 
 
+/** Drapeaux SVG inline — compatibles Windows (les emojis drapeaux ne s'affichent pas sur Windows) */
+const FlagFR = () => (
+  <svg width="18" height="13" viewBox="0 0 18 13" aria-hidden="true">
+    <rect width="6" height="13" fill="#002395" />
+    <rect x="6" width="6" height="13" fill="#fff" />
+    <rect x="12" width="6" height="13" fill="#ED2939" />
+  </svg>
+);
+
+const FlagGB = () => (
+  <svg width="18" height="13" viewBox="0 0 60 40" aria-hidden="true">
+    <rect width="60" height="40" fill="#012169" />
+    <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" strokeWidth="8" />
+    <path d="M0,0 L60,40 M60,0 L0,40" stroke="#C8102E" strokeWidth="5" />
+    <path d="M30,0 V40 M0,20 H60" stroke="#fff" strokeWidth="12" />
+    <path d="M30,0 V40 M0,20 H60" stroke="#C8102E" strokeWidth="7" />
+  </svg>
+);
+
 /** Toutes les langues supportées — ajouter/retirer ici */
 const LANGUAGES = [
-  { code: "fr", label: "Français",  flag: "🇫🇷" },
-  { code: "en", label: "English",   flag: "🇬🇧" },
-  // { code: "de", label: "Deutsch",   flag: "🇩🇪" },
-  // { code: "es", label: "Español",   flag: "🇪🇸" },
-  // { code: "it", label: "Italiano",  flag: "🇮🇹" },
-  // { code: "pt", label: "Português", flag: "🇵🇹" },
-  // { code: "ru", label: "Русский",   flag: "🇷🇺" },
-  // { code: "zh", label: "中文",      flag: "🇨🇳" },
+  { code: "fr", label: "Français",  Flag: FlagFR },
+  { code: "en", label: "English",   Flag: FlagGB },
+  // { code: "de", label: "Deutsch",   Flag: ... },
+  // { code: "es", label: "Español",   Flag: ... },
+  // { code: "it", label: "Italiano",  Flag: ... },
+  // { code: "pt", label: "Português", Flag: ... },
+  // { code: "ru", label: "Русский",   Flag: ... },
+  // { code: "zh", label: "中文",      Flag: ... },
   // { code: "ja", label: "日本語",    flag: "🇯🇵" },
   // { code: "ko", label: "한국어",    flag: "🇰🇷" },
 ] as const;
@@ -54,7 +73,6 @@ const dbItems = [
   {
     groupKey: "nav.groupCorp",
     items: [
-      { labelKey: "nav.manufacturers", path: "/manufacturers", icon: Building2, descKey: "nav.descManufacturers" },
       { labelKey: "nav.missions",      path: "/missions",      icon: Target,    descKey: "nav.descMissions"      },
     ],
   },
@@ -63,6 +81,22 @@ const dbItems = [
     items: [
       { labelKey: "nav.blueprints",   path: "/blueprints",   icon: ScrollText, descKey: "nav.descBlueprints"   },
       { labelKey: "nav.consumables", path: "/consumables", icon: FlaskConical, descKey: "nav.descConsumables" },
+    ],
+  },
+];
+
+const loreItems = [
+  {
+    groupKey: "nav.groupLore",
+    items: [
+      { labelKey: "nav.encyclopedia",  path: "/lore",          icon: BookOpen,        descKey: "nav.descEncyclopedia"  },
+      { labelKey: "nav.characters",    path: "/characters",    icon: PersonStanding,  descKey: "nav.descCharacters"    },
+    ],
+  },
+  {
+    groupKey: "nav.groupCorp",
+    items: [
+      { labelKey: "nav.manufacturers", path: "/manufacturers", icon: Building2,       descKey: "nav.descManufacturers" },
     ],
   },
 ];
@@ -93,9 +127,10 @@ const toolItems = [
 const Navbar = () => {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen]           = useState(false);
-  const [openMenu, setOpenMenu]               = useState<"db" | "tools" | null>(null);
+  const [openMenu, setOpenMenu]               = useState<"db" | "tools" | "lore" | null>(null);
   const [mobileDbOpen, setMobileDbOpen]       = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [mobileLoreOpen, setMobileLoreOpen]   = useState(false);
   const [versionOpen, setVersionOpen]         = useState(false);
   const [langOpen, setLangOpen]               = useState(false);
   const [userOpen, setUserOpen]               = useState(false);
@@ -129,10 +164,10 @@ const Navbar = () => {
   }, []);
 
   const toolsActive = toolItems.some((i) => pathname.startsWith(i.path));
-  const dbActive    = !toolsActive && dbItems.some((g) => g.items.some((i) => pathname.startsWith(i.path)));
+  const loreActive  = loreItems.some((g) => g.items.some((i) => pathname.startsWith(i.path)));
+  const dbActive    = !toolsActive && !loreActive && dbItems.some((g) => g.items.some((i) => pathname.startsWith(i.path)));
 
   const topLinks = [
-    { labelKey: "nav.lore",     path: "/lore",     icon: BookOpen  },
     { labelKey: "nav.news",     path: "/news",     icon: Newspaper },
     { labelKey: "nav.spectrum", path: "/spectrum", icon: Radio     },
   ];
@@ -178,6 +213,20 @@ const Navbar = () => {
             <Wrench className="h-3.5 w-3.5" />
             {t("nav.tools")}
             <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openMenu === "tools" ? "rotate-180" : ""}`} />
+          </button>
+
+          {/* Trigger Lore */}
+          <button
+            onMouseEnter={() => setOpenMenu("lore")}
+            className={`inline-flex items-center gap-1.5 px-4 font-display text-sm font-medium transition-colors ${
+              loreActive || openMenu === "lore"
+                ? "bg-primary/5 text-primary border-b-2 border-primary/30"
+                : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground border-b-2 border-transparent"
+            }`}
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            {t("nav.lore")}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openMenu === "lore" ? "rotate-180" : ""}`} />
           </button>
 
           {/* Top-level links */}
@@ -286,7 +335,7 @@ const Navbar = () => {
               title={t("nav.language")}
             >
               <span className="flex items-center gap-1.5">
-                <span className="text-base leading-none">{currentLang.flag}</span>
+                <span className="inline-flex shrink-0 overflow-hidden rounded-[2px]"><currentLang.Flag /></span>
                 <span className="hidden text-xs font-semibold uppercase sm:block">{currentLang.code}</span>
                 <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${langOpen ? "rotate-180" : ""}`} />
               </span>
@@ -308,7 +357,7 @@ const Navbar = () => {
                           : "text-foreground hover:bg-secondary/40"
                       }`}
                     >
-                      <span className="text-base leading-none">{lang.flag}</span>
+                      <span className="inline-flex shrink-0 overflow-hidden rounded-[2px]"><lang.Flag /></span>
                       <span className="flex-1 text-xs">{lang.label}</span>
                       {i18n.language === lang.code && (
                         <span className="h-1.5 w-1.5 rounded-full bg-primary" />
@@ -530,6 +579,46 @@ const Navbar = () => {
         </div>
       </div>
 
+      {/* ─── Mega menu Lore ───────────────────────────────────────────────────── */}
+      <div
+        className={`absolute left-0 right-0 top-full hidden md:block overflow-hidden border-b border-border bg-background shadow-2xl transition-all duration-150 ${
+          openMenu === "lore"
+            ? "opacity-100 pointer-events-auto translate-y-0"
+            : "opacity-0 pointer-events-none -translate-y-1"
+        }`}
+      >
+        <div className="container py-5">
+          <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            {t("nav.loreSubtitle")}
+          </p>
+          <div className="grid grid-cols-4 gap-x-6 gap-y-0">
+            {loreItems.flatMap((group) => group.items).map((item) => {
+              const Icon = item.icon;
+              const active = pathname.startsWith(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className={`group flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors ${
+                    active ? "bg-primary/5 text-primary" : "text-foreground hover:bg-secondary/40"
+                  }`}
+                >
+                  <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
+                    active ? "border-primary/30 bg-primary/5" : "border-border bg-secondary"
+                  }`}>
+                    <Icon className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium leading-tight">{t(item.labelKey)}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground line-clamp-1">{t(item.descKey)}</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* ─── Mobile menu ─── */}
       {mobileOpen && (
         <div className="border-t border-border bg-background p-4 md:hidden">
@@ -589,6 +678,44 @@ const Navbar = () => {
           {mobileToolsOpen && (
             <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l border-border pl-3">
               {toolItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${
+                      pathname.startsWith(item.path)
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {t(item.labelKey)}
+                    <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-40" />
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Lore accordion */}
+          <button
+            onClick={() => setMobileLoreOpen((v) => !v)}
+            className={`mt-0.5 flex w-full items-center justify-between rounded-md px-3 py-2 font-display text-sm font-medium ${
+              loreActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              {t("nav.lore")}
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${mobileLoreOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {mobileLoreOpen && (
+            <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l border-border pl-3">
+              {loreItems.flatMap((g) => g.items).map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link
