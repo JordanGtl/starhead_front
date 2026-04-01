@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import {
   Building2, Search, RefreshCw, Loader2, Plus, Pencil, Trash2,
   Check, X, ChevronLeft, ChevronRight, MapPin, Calendar, Tag,
+  Download, Upload, AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/lib/api';
@@ -156,8 +157,11 @@ const CompaniesAdmin = () => {
   const [error, setError]       = useState<string | null>(null);
   const [search, setSearch]     = useState('');
   const [page, setPage]         = useState(1);
-  const [editing, setEditing]   = useState<number | null>(null);   // id or -1 for new
-  const [deleting, setDeleting] = useState<number | null>(null);
+  const [editing, setEditing]     = useState<number | null>(null);   // id or -1 for new
+  const [deleting, setDeleting]   = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ created: number; updated: number; errors: string[] } | null>(null);
 
   useEffect(() => {
     if (!authLoading && (!user || !user.roles?.includes('ROLE_ADMIN'))) {
@@ -204,6 +208,50 @@ const CompaniesAdmin = () => {
     setEditing(null);
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const data = await apiFetch<object[]>('/api/admin/manufacturers/export');
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `manufacturers-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      let parsed: unknown;
+      try { parsed = JSON.parse(ev.target?.result as string); } catch {
+        alert('Fichier JSON invalide.');
+        return;
+      }
+      if (!Array.isArray(parsed)) { alert('Le fichier doit contenir un tableau JSON.'); return; }
+      setImporting(true);
+      setImportResult(null);
+      try {
+        const result = await apiFetch<{ created: number; updated: number; errors: string[] }>(
+          '/api/admin/manufacturers/import',
+          { method: 'POST', body: JSON.stringify(parsed) },
+        );
+        setImportResult(result);
+        load(1, search);
+      } finally {
+        setImporting(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm('Supprimer cette entreprise ?')) return;
     setDeleting(id);
@@ -242,7 +290,7 @@ const CompaniesAdmin = () => {
                 {data ? `${data.total} entreprise${data.total > 1 ? 's' : ''}` : '…'}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setEditing(-1)}
                 className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
@@ -250,6 +298,16 @@ const CompaniesAdmin = () => {
                 <Plus className="h-4 w-4" />
                 Nouvelle entreprise
               </button>
+              <button onClick={handleExport} disabled={exporting}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40">
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Exporter
+              </button>
+              <label className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 text-sm text-muted-foreground transition-colors hover:text-foreground ${importing ? 'opacity-40 pointer-events-none' : ''}`}>
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Importer
+                <input type="file" accept=".json,application/json" className="sr-only" onChange={handleImport} disabled={importing} />
+              </label>
               <button onClick={() => load()} disabled={loading}
                 className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40">
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -269,6 +327,19 @@ const CompaniesAdmin = () => {
                 onSave={form => handleSave(null, form)}
                 onCancel={() => setEditing(null)}
               />
+            </div>
+          )}
+
+          {importResult && (
+            <div className={`rounded-lg border px-4 py-3 text-sm flex items-start gap-3 ${importResult.errors.length > 0 ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : 'border-green-500/30 bg-green-500/10 text-green-400'}`}>
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-medium">Import terminé — {importResult.created} créé{importResult.created > 1 ? 's' : ''}, {importResult.updated} mis à jour</p>
+                {importResult.errors.map((e, i) => <p key={i} className="text-xs opacity-80">{e}</p>)}
+              </div>
+              <button onClick={() => setImportResult(null)} className="ml-auto shrink-0 opacity-60 hover:opacity-100">
+                <X className="h-4 w-4" />
+              </button>
             </div>
           )}
 

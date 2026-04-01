@@ -8,6 +8,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { useSEO } from "@/hooks/useSEO";
+import { useTrackPageView } from "@/hooks/useAnalytics";
 import { apiFetch, API_URL } from "@/lib/api";
 import { useVersion } from "@/contexts/VersionContext";
 import PageHeader from "@/components/PageHeader";
@@ -189,6 +190,7 @@ const ShipCompare = () => {
   const [loadingAll, setLoadingAll] = useState(true);
   const [slots, setSlots]           = useState<(CompareShip | null)[]>([null, null]);
 
+  useTrackPageView('tool_compare');
   useSEO({
     title: "Comparateur de vaisseaux",
     description: "Comparez les statistiques de plusieurs vaisseaux Star Citizen côte à côte.",

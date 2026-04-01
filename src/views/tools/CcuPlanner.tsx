@@ -6,6 +6,7 @@ import {
   BadgeDollarSign, Route, AlertCircle, CheckCircle2, Loader2,
 } from "lucide-react";
 import { useSEO } from "@/hooks/useSEO";
+import { useTrackPageView, trackToolUse } from "@/hooks/useAnalytics";
 import { apiFetch } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -208,6 +209,7 @@ const ShipSelect = ({
 
 const CcuPlanner = () => {
   useSEO({ title: "Planificateur CCU", description: "Planifiez vos Cross-Chassis Upgrades pour optimiser votre flotte Star Citizen.", path: "/tools/ccu" });
+  useTrackPageView('tool_ccu');
 
   const [ships,       setShips]       = useState<Ship[]>([]);
   const [loadingShips, setLoadingShips] = useState(true);
@@ -242,7 +244,9 @@ const CcuPlanner = () => {
   // ── Calcul chaîne optimale ──────────────────────────────────────────────────
   const result = useMemo<DijkstraResult | null>(() => {
     if (!fromId || !toId || fromId === toId || ships.length === 0) return null;
-    return findCheapestChain(fromId, toId, ships, ccus);
+    const chain = findCheapestChain(fromId, toId, ships, ccus);
+    if (chain) trackToolUse('tool_ccu');
+    return chain;
   }, [fromId, toId, ships, ccus]);
 
   const fromShip  = ships.find((s) => s.id === fromId);

@@ -16,6 +16,7 @@ import { useVersion } from "@/contexts/VersionContext";
 import { apiFetch, API_URL } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { useSEO } from "@/hooks/useSEO";
+import { useTrackPageView } from "@/hooks/useAnalytics";
 import { componentTypeLabel, COMPONENT_TYPE_I18N_KEYS } from "@/data/components";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -233,6 +234,8 @@ const ShipDetail = () => {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [id, selectedVersion?.id]);
+
+  useTrackPageView('ship', id ? Number(id) : undefined);
 
   useSEO({
     title:       ship?.name,
