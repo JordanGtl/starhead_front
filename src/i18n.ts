@@ -397,6 +397,7 @@ const resources = {
         sectionWeapons: 'Armes',
         sectionComponents: 'Composants',
         sectionVehicles: 'Véhicules',
+        relations: 'Relations & partenariats',
       },
       missions: {
         title: 'Missions',
@@ -994,6 +995,7 @@ const resources = {
         sectionWeapons: 'Weapons',
         sectionComponents: 'Components',
         sectionVehicles: 'Vehicles',
+        relations: 'Relations & partnerships',
       },
       missions: {
         title: 'Missions',
@@ -1200,10 +1202,15 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'fr',
-    lng: 'fr',
+    fallbackLng: 'en',
+    supportedLngs: ['fr', 'en'],
+    nonExplicitSupportedLngs: true, // fr-FR → fr, en-US → en
     interpolation: { escapeValue: false },
-    detection: { order: ['localStorage', 'navigator'], caches: ['localStorage'] },
+    detection: {
+      order: ['localStorage', 'navigator'],
+      caches: ['localStorage'],
+      lookupLocalStorage: 'starhead_lang',
+    },
   });
 
 export default i18n;

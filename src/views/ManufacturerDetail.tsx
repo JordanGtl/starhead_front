@@ -1,136 +1,306 @@
 'use client';
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock } from "lucide-react";
+import { Building2, MapPin, Calendar, Tag, Loader2, ChevronRight, History, ChevronLeft, Shield, Users, Rocket } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { manufacturers } from "@/data/manufacturers";
-import { manufacturerTimelines } from "@/data/manufacturer-timelines";
-import { ships } from "@/data/ships";
-import { weapons } from "@/data/weapons";
-import { components } from "@/data/components";
-import { vehicles } from "@/data/vehicles";
-import { Badge } from "@/components/ui/badge";
+import { fetchManufacturer, localize, type Manufacturer } from "@/data/manufacturers";
+import { fetchShips, type Ship } from "@/data/ships";
 import { useSEO } from "@/hooks/useSEO";
+import PageHeader from "@/components/PageHeader";
+import ShipCard from "@/components/ShipCard";
 
 const ManufacturerDetail = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
-  const manufacturer = manufacturers.find((m) => m.slug === slug);
+
+  const [manufacturer, setManufacturer] = useState<Manufacturer | null>(null);
+  const [loading, setLoading]           = useState(true);
+  const [notFound, setNotFound]         = useState(false);
+  const [ships, setShips]               = useState<Ship[]>([]);
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [scrollState, setScrollState]   = useState({ left: false, right: true });
+  const shipsRef    = useRef<HTMLDivElement>(null);
+  const [shipsScroll, setShipsScroll]   = useState({ left: false, right: true });
 
   useSEO({
-    title: manufacturer?.name ?? undefined,
-    description: manufacturer ? `${manufacturer.name} — Fabricant Star Citizen. Vaisseaux, armes et composants dans StarHead.` : undefined,
+    title: manufacturer?.name,
+    description: manufacturer
+      ? `${manufacturer.name} — Fabricant Star Citizen. Vaisseaux, armes et composants dans StarHead.`
+      : undefined,
     path: slug ? `/manufacturers/${slug}` : undefined,
   });
 
-  if (!manufacturer) {
+  useEffect(() => {
+    if (!slug) return;
+    fetchManufacturer(slug)
+      .then(setManufacturer)
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  useEffect(() => {
+    if (!manufacturer) return;
+    fetchShips({ manufacturer: manufacturer.name }).then(result => {
+      setShips(result);
+      setTimeout(() => {
+        const el = shipsRef.current;
+        if (el) setShipsScroll({ left: false, right: el.scrollWidth > el.clientWidth });
+      }, 50);
+    });
+  }, [manufacturer?.name]);
+
+  useEffect(() => {
+    const el = timelineRef.current;
+    if (!el) return;
+    setScrollState({ left: false, right: el.scrollWidth > el.clientWidth });
+  }, [manufacturer?.timeline]);
+
+  const scrollBy = (ref: React.RefObject<HTMLDivElement | null>, dir: 'left' | 'right') => {
+    const el = ref.current;
+    if (!el) return;
+    const amount = Math.round(el.clientWidth * 0.6);
+    el.scrollBy({ left: dir === 'right' ? amount : -amount, behavior: 'smooth' });
+  };
+
+  const onShipsScroll = () => {
+    const el = shipsRef.current;
+    if (!el) return;
+    setShipsScroll({ left: el.scrollLeft > 10, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 10 });
+  };
+
+  const onTimelineScroll = () => {
+    const el = timelineRef.current;
+    if (!el) return;
+    setScrollState({
+      left:  el.scrollLeft > 10,
+      right: el.scrollLeft < el.scrollWidth - el.clientWidth - 10,
+    });
+  };
+
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <h1 className="font-display text-2xl font-bold text-foreground">{t("manufacturers.notFound")}</h1>
-          <Link href="/manufacturers" className="mt-4 inline-block text-primary hover:underline">
-            ← {t("manufacturers.backToList")}
-          </Link>
-        </div>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  const relatedShips = ships.filter((s) => s.manufacturer === manufacturer.name);
-  const relatedWeapons = weapons.filter((w) => w.manufacturer === manufacturer.name);
-  const relatedComponents = components.filter((c) => c.manufacturer === manufacturer.name);
-  const relatedVehicles = vehicles.filter((v) => v.manufacturer === manufacturer.name);
+  if (notFound || !manufacturer) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-muted-foreground">
+        <Building2 className="h-10 w-10 opacity-20" />
+        <p className="text-sm">{t("manufacturers.notFound")}</p>
+        <Link href="/manufacturers" className="text-sm text-primary hover:underline">
+          ← {t("manufacturers.backToList")}
+        </Link>
+      </div>
+    );
+  }
 
-  const sections = [
-    { title: t("manufacturers.sectionShips"), items: relatedShips, linkBase: "/ships", getSubtitle: (i: any) => i.role },
-    { title: t("manufacturers.sectionWeapons"), items: relatedWeapons, linkBase: "/weapons", getSubtitle: (i: any) => `${i.type} — ${t("weaponDetail.size")} ${i.size}` },
-    { title: t("manufacturers.sectionComponents"), items: relatedComponents, linkBase: "/components", getSubtitle: (i: any) => `${i.type} ${i.size} — Grade ${i.grade}` },
-    { title: t("manufacturers.sectionVehicles"), items: relatedVehicles, linkBase: "/vehicles", getSubtitle: (i: any) => `${i.type} — ${i.speed} km/h` },
-  ].filter((s) => s.items.length > 0);
+  const logoSrc = manufacturer.logoBase64 ?? null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container py-8">
-        <Link
-          href="/manufacturers"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t("manufacturers.title")}
-        </Link>
+    <>
+      <PageHeader
+        breadcrumb={[
+          { label: t("manufacturers.title"), href: "/manufacturers", icon: Building2 },
+          { label: manufacturer.name },
+        ]}
+        title={manufacturer.name}
+        label={t("manufacturers.title")}
+        labelIcon={Building2}
+        subtitle={manufacturer.headquarters ?? undefined}
+      />
 
-        {/* Header */}
-        <div className="mb-8 rounded-lg border border-border bg-card p-6">
-          <div className="flex items-start gap-4">
-            <span className="text-4xl">{manufacturer.logo}</span>
-            <div className="flex-1">
-              <h1 className="font-display text-2xl font-bold text-foreground">{manufacturer.name}</h1>
-              <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <span>📅 {t("manufacturers.founded")} {manufacturer.founded}</span>
-                <span>📍 {manufacturer.headquarters}</span>
+      <div className="container py-8 space-y-6">
+
+        {/* Card principale + Histoire côte à côte */}
+        <div className="grid gap-6 lg:grid-cols-2">
+
+          {/* Card principale */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-start gap-5">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-secondary">
+                {logoSrc
+                  ? <img src={logoSrc} alt={`Logo ${manufacturer.name}`} className="h-14 w-14 object-contain" />
+                  : <Building2 className="h-8 w-8 text-muted-foreground/30" />
+                }
               </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {manufacturer.industry.map((ind) => (
-                  <Badge key={ind} variant="secondary">{ind}</Badge>
-                ))}
+              <div className="flex-1 min-w-0">
+                <h2 className="font-display text-xl font-bold text-foreground">{manufacturer.name}</h2>
+                <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                  {manufacturer.founded && (
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      {t("manufacturers.founded")} {manufacturer.founded}
+                    </div>
+                  )}
+                  {manufacturer.headquarters && (
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      {manufacturer.headquarters}
+                    </div>
+                  )}
+                </div>
+                {(manufacturer.industry ?? []).length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {(manufacturer.industry ?? []).map((ind, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                        <Tag className="h-3 w-3 shrink-0" />
+                        {localize(ind, i18n.language)}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+            {manufacturer.description && (
+              <p className="mt-5 border-t border-border pt-5 text-sm leading-relaxed text-muted-foreground">
+                {localize(manufacturer.description, i18n.language)}
+              </p>
+            )}
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">{manufacturer.description}</p>
-        </div>
 
-        {/* Lore */}
-        <div className="mb-8 rounded-lg border border-border bg-card p-6">
-          <h2 className="mb-3 font-display text-lg font-semibold text-foreground">{t("manufacturers.history")}</h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">{manufacturer.lore}</p>
+          {/* Histoire */}
+          {manufacturer.lore && (
+            <div className="rounded-xl border border-border bg-card p-6">
+              <h2 className="mb-4 flex items-center gap-2 font-display text-base font-semibold text-foreground">
+                <Building2 className="h-4 w-4 text-primary" />
+                {t("manufacturers.history")}
+              </h2>
+              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                {localize(manufacturer.lore, i18n.language)}
+              </p>
+            </div>
+          )}
+
         </div>
 
         {/* Chronologie */}
-        {manufacturerTimelines[manufacturer.id] && (
-          <div className="mb-8 rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 font-display text-lg font-semibold text-foreground flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
+        {(manufacturer.timeline ?? []).length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-6">
+            <h2 className="mb-6 flex items-center gap-2 font-display text-base font-semibold text-foreground">
+              <History className="h-4 w-4 text-primary" />
               {t("manufacturers.timeline")}
             </h2>
-            <div className="relative ml-3 border-l-2 border-primary/30 pl-6 space-y-4">
-              {manufacturerTimelines[manufacturer.id].map((event, index) => (
-                <div key={index} className="relative">
-                  <div className="absolute -left-[31px] top-1 h-3 w-3 rounded-full border-2 border-primary bg-background" />
-                  <span className="text-xs font-mono font-semibold text-primary">{event.date}</span>
-                  <p className="text-sm text-muted-foreground">{event.label}</p>
+            <div className="relative">
+              {/* Fondu gauche */}
+              {scrollState.left && (
+                <div className="absolute left-0 top-0 bottom-0 z-10 w-20 bg-gradient-to-r from-card to-transparent">
+                  <button
+                    onClick={() => scrollBy(timelineRef, 'left')}
+                    className="absolute left-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-card border border-border shadow-md text-foreground hover:bg-secondary hover:border-primary/50 transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {/* Fondu droit */}
+              {scrollState.right && (
+                <div className="absolute right-0 top-0 bottom-0 z-10 w-20 bg-gradient-to-l from-card to-transparent">
+                  <button
+                    onClick={() => scrollBy(timelineRef, 'right')}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-card border border-border shadow-md text-foreground hover:bg-secondary hover:border-primary/50 transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              <div ref={timelineRef} className="overflow-x-auto pb-2" onScroll={onTimelineScroll}>
+              <div className="relative flex gap-6 min-w-max">
+              {/* Trait horizontal aligné sur les points */}
+              <div className="absolute left-0 right-0 top-[5px] h-px bg-border" />
+                {(manufacturer.timeline ?? [])
+                  .slice()
+                  .sort((a, b) => a.date.replace(/[^0-9]/g, '').localeCompare(b.date.replace(/[^0-9]/g, '')))
+                  .map((event, i) => (
+                    <div key={i} className="group relative flex flex-col" style={{ minWidth: 160, maxWidth: 200 }}>
+                      {/* Point aligné à gauche sur la ligne */}
+                      <div className="relative z-10 mb-3 h-[11px] w-[11px] shrink-0 rounded-full border-2 border-primary bg-card transition-colors group-hover:bg-primary" />
+                      <span className="font-mono text-[11px] font-bold text-primary">{event.date}</span>
+                      <span className="mt-1 text-xs font-semibold text-foreground leading-snug">{localize(event.title, i18n.language)}</span>
+                      {event.description && (
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground line-clamp-3">{localize(event.description, i18n.language)}</p>
+                      )}
+                    </div>
+                  ))
+                }
+              </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {/* Relations & partenariats */}
+        {manufacturer.relations && manufacturer.relations.length > 0 && (
+          <div>
+            <h2 className="mb-4 flex items-center gap-2 font-display text-base font-semibold text-foreground">
+              <Users className="h-4 w-4 text-primary" />
+              {t("manufacturers.relations")}
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {manufacturer.relations.map(rel => (
+                <div key={rel.name} className="flex gap-4 rounded-xl border border-border bg-card p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{rel.name}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{localize(rel.description, i18n.language)}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Products */}
-        {sections.map((section) => (
-          <div key={section.title} className="mb-8">
-            <h2 className="mb-4 font-display text-lg font-semibold text-foreground">
-              {section.title} ({section.items.length})
+        {/* Vaisseaux du fabricant */}
+        {ships.length > 0 && (
+          <div>
+            <h2 className="mb-4 flex items-center gap-2 font-display text-base font-semibold text-foreground">
+              <Rocket className="h-4 w-4 text-primary" />
+              {t("manufacturers.sectionShips")}
             </h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {section.items.map((item: any) => (
-                <Link
-                  key={item.id}
-                  href={`${section.linkBase}/${item.id}`}
-                  className="rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/50 block"
-                >
-                  <h3 className="font-display text-sm font-semibold text-foreground">{item.name}</h3>
-                  <p className="text-xs text-muted-foreground">{section.getSubtitle(item)}</p>
-                  <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{item.description}</p>
-                </Link>
-              ))}
+            <div className="relative">
+              {/* Fondu gauche */}
+              {shipsScroll.left && (
+                <div className="absolute left-0 top-0 bottom-0 z-10 w-20 bg-gradient-to-r from-background to-transparent">
+                  <button
+                    onClick={() => scrollBy(shipsRef, 'left')}
+                    className="absolute left-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-card border border-border shadow-md text-foreground hover:bg-secondary hover:border-primary/50 transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {/* Fondu droit */}
+              {shipsScroll.right && (
+                <div className="absolute right-0 top-0 bottom-0 z-10 w-20 bg-gradient-to-l from-background to-transparent">
+                  <button
+                    onClick={() => scrollBy(shipsRef, 'right')}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-card border border-border shadow-md text-foreground hover:bg-secondary hover:border-primary/50 transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              <div ref={shipsRef} className="overflow-x-auto pb-2" onScroll={onShipsScroll}>
+                <div className="flex items-stretch gap-5 min-w-max">
+                  {ships.map(ship => (
+                    <div key={ship.id} className="w-64 shrink-0 [&>a]:h-full">
+                      <ShipCard ship={ship} />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        ))}
-
-        {sections.length === 0 && (
-          <p className="text-sm text-muted-foreground">{t("manufacturers.noProducts")}</p>
         )}
+
       </div>
-    </div>
+    </>
   );
 };
 

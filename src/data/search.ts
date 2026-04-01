@@ -3,7 +3,7 @@ import { weapons } from "./weapons";
 import { locations } from "./locations";
 import { vehicles } from "./vehicles";
 import { components } from "./components";
-import { manufacturers } from "./manufacturers";
+import { manufacturers, localize } from "./manufacturers";
 import { loreEntries } from "./lore";
 import { apiFetch } from "@/lib/api";
 
@@ -106,15 +106,16 @@ export function globalSearch(query: string, category: SearchCategory = "all"): S
   }
 
   if (category === "all" || category === "manufacturers") {
-    manufacturers.filter(m =>
-      m.name.toLowerCase().includes(q) ||
-      (m.description ?? "").toLowerCase().includes(q) ||
-      (m.industry ?? []).some(i => i.toLowerCase().includes(q))
-    ).forEach(m => results.push({
+    manufacturers.filter(m => {
+      const desc = localize(m.description, "fr") + " " + localize(m.description, "en");
+      const industries = (m.industry ?? []).map(i => localize(i, "fr") + " " + localize(i, "en")).join(" ");
+      return m.name.toLowerCase().includes(q) || desc.toLowerCase().includes(q) || industries.toLowerCase().includes(q);
+    }).forEach(m => results.push({
       id: String(m.id), name: m.name, category: "manufacturers", categoryLabel: "Entreprise",
-      subtitle: m.headquarters ?? "", description: m.description ?? "",
+      subtitle: m.headquarters ?? "",
+      description: localize(m.description, "fr"),
       link: `/manufacturers/${m.slug}`,
-      meta: { Fondée: m.founded ?? "", Secteurs: (m.industry ?? []).join(", ") },
+      meta: { Fondée: m.founded ?? "", Secteurs: (m.industry ?? []).map(i => localize(i, "fr")).join(", ") },
     }));
   }
 
