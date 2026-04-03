@@ -1,10 +1,14 @@
 'use client';
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { UserCircle2, BookOpen, ChevronLeft, Building2, ExternalLink, GitFork } from "lucide-react";
+import { UserCircle2, BookOpen, ChevronLeft, Building2, ExternalLink, GitFork, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { CHARACTERS, getCharacterBySlug, localizeChar, type Character, type FamilyMember, type FamilyRelation, type CharacterStatus, type CharacterSpecies } from "@/data/characters";
+import { apiFetch } from "@/lib/api";
+import {
+  ApiCharacter, CharacterStatus, CharacterSpecies, FamilyMember, FamilyRelation,
+  pickTranslation, pickSectionTranslation,
+} from "@/data/characters";
 import { useSEO } from "@/hooks/useSEO";
 import PageHeader from "@/components/PageHeader";
 
@@ -27,17 +31,17 @@ const speciesConfig: Record<CharacterSpecies, { labelKey: string; color: string 
 // ─── Family tree ──────────────────────────────────────────────────────────────
 
 const relationKeyMap: Record<FamilyRelation, string> = {
-  father:       'characters.relFather',
-  mother:       'characters.relMother',
-  grandfather:  'characters.relGrandfather',
-  grandmother:  'characters.relGrandmother',
-  son:          'characters.relSon',
-  daughter:     'characters.relDaughter',
-  grandson:     'characters.relGrandson',
-  granddaughter:'characters.relGranddaughter',
-  brother:      'characters.relBrother',
-  sister:       'characters.relSister',
-  spouse:       'characters.relSpouse',
+  father:        'characters.relFather',
+  mother:        'characters.relMother',
+  grandfather:   'characters.relGrandfather',
+  grandmother:   'characters.relGrandmother',
+  son:           'characters.relSon',
+  daughter:      'characters.relDaughter',
+  grandson:      'characters.relGrandson',
+  granddaughter: 'characters.relGranddaughter',
+  brother:       'characters.relBrother',
+  sister:        'characters.relSister',
+  spouse:        'characters.relSpouse',
 };
 
 const statusDotColor: Record<CharacterStatus, string> = {
@@ -48,19 +52,20 @@ const statusDotColor: Record<CharacterStatus, string> = {
 
 type FamilyNodeData =
   | (FamilyMember & { isSubject?: false })
-  | { isSubject: true; name: string; slug: string; image?: string };
+  | { isSubject: true; name: string; slug: string; image?: string | null };
 
-const FamilyNode = ({ data }: { data: FamilyNodeData }) => {
+const FamilyNode = ({
+  data,
+  allChars,
+}: { data: FamilyNodeData; allChars: ApiCharacter[] }) => {
   const { t } = useTranslation();
 
-  const isSubject = data.isSubject === true;
-
-  // Resolve image: subject image passed directly; linked member → look up in CHARACTERS
+  const isSubject  = data.isSubject === true;
   const linkedChar = !isSubject && (data as FamilyMember).characterSlug
-    ? CHARACTERS.find(c => c.slug === (data as FamilyMember).characterSlug)
+    ? allChars.find(c => c.slug === (data as FamilyMember).characterSlug)
     : null;
   const image = isSubject
-    ? (data as { image?: string }).image
+    ? (data as { image?: string | null }).image
     : linkedChar?.image ?? undefined;
 
   const status = !isSubject ? (data as FamilyMember).status : undefined;
@@ -79,25 +84,17 @@ const FamilyNode = ({ data }: { data: FamilyNodeData }) => {
       {/* Photo */}
       <div className="relative flex h-28 w-full shrink-0 items-center justify-center overflow-hidden bg-secondary">
         {image ? (
-          <img
-            src={image}
-            alt={data.name}
-            className="h-full w-full object-cover object-top"
-          />
+          <img src={image} alt={data.name} className="h-full w-full object-cover object-top" />
         ) : (
           <UserCircle2 className="h-10 w-10 text-muted-foreground/20" />
         )}
-        {/* Status dot */}
         {dot && (
           <span className={`absolute right-2 top-2 h-2 w-2 rounded-full ring-1 ring-background ${dot}`} />
         )}
-        {/* Subject star badge */}
         {isSubject && (
           <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground">★</span>
         )}
       </div>
-
-      {/* Infos */}
       <div className="flex flex-col gap-0.5 px-2 py-2 text-center">
         <span className={`text-[11px] font-semibold leading-tight line-clamp-2 ${isSubject ? 'text-primary' : 'text-foreground'}`}>
           {data.name}
@@ -121,41 +118,44 @@ const FamilyNode = ({ data }: { data: FamilyNodeData }) => {
 };
 
 const VLine = () => (
-  <div className="flex justify-center py-1">
-    <div className="h-6 w-px bg-border" />
-  </div>
+  <div className="flex justify-center py-1"><div className="h-6 w-px bg-border" /></div>
 );
-
 const HLine = () => (
   <div className="h-px w-8 self-center shrink-0 bg-border" />
 );
 
-const FamilyTree = ({ character }: { character: Character }) => {
-  const { t } = useTranslation();
-  const family = character.family ?? [];
+const FamilyTree = ({
+  character,
+  allChars,
+}: { character: ApiCharacter; allChars: ApiCharacter[] }) => {
+  const family = character.familyMembers ?? [];
 
-  const ancestors   = family.filter(m => ['grandfather', 'grandmother'].includes(m.relation));
-  const parents     = family.filter(m => ['father', 'mother'].includes(m.relation));
-  const siblings    = family.filter(m => ['brother', 'sister'].includes(m.relation));
-  const spouse      = family.find( m => m.relation === 'spouse');
-  const children    = family.filter(m => ['son', 'daughter'].includes(m.relation));
+  const ancestors    = family.filter(m => ['grandfather', 'grandmother'].includes(m.relation));
+  const parents      = family.filter(m => ['father', 'mother'].includes(m.relation));
+  const siblings     = family.filter(m => ['brother', 'sister'].includes(m.relation));
+  const spouse       = family.find( m => m.relation === 'spouse');
+  const children     = family.filter(m => ['son', 'daughter'].includes(m.relation));
   const grandchildren = family.filter(m => ['grandson', 'granddaughter'].includes(m.relation));
 
-  const subjectData = { isSubject: true as const, name: character.name, slug: character.slug, image: character.image };
+  const subjectData = {
+    isSubject: true as const,
+    name:  character.name,
+    slug:  character.slug,
+    image: character.image,
+  };
 
   return (
     <div className="rounded-xl border border-border bg-card px-6 py-5">
       <div className="overflow-x-auto">
         <div className="flex flex-col items-center min-w-max mx-auto">
 
-          {/* Grands-parents */}
           {ancestors.length > 0 && (
             <>
               <div className="flex items-end gap-3">
                 {ancestors.map((m, i) => (
                   <div key={i} className="flex items-end gap-3">
                     {i > 0 && <HLine />}
-                    <FamilyNode data={m} />
+                    <FamilyNode data={m} allChars={allChars} />
                   </div>
                 ))}
               </div>
@@ -163,14 +163,13 @@ const FamilyTree = ({ character }: { character: Character }) => {
             </>
           )}
 
-          {/* Parents */}
           {parents.length > 0 && (
             <>
               <div className="flex items-end gap-3">
                 {parents.map((m, i) => (
                   <div key={i} className="flex items-end gap-3">
                     {i > 0 && <HLine />}
-                    <FamilyNode data={m} />
+                    <FamilyNode data={m} allChars={allChars} />
                   </div>
                 ))}
               </div>
@@ -178,24 +177,22 @@ const FamilyTree = ({ character }: { character: Character }) => {
             </>
           )}
 
-          {/* Rangée principale : frères/sœurs — sujet — conjoint */}
           <div className="flex items-center gap-0">
             {siblings.map((m, i) => (
               <div key={i} className="flex items-center gap-0">
-                <FamilyNode data={m} />
+                <FamilyNode data={m} allChars={allChars} />
                 <HLine />
               </div>
             ))}
-            <FamilyNode data={subjectData} />
+            <FamilyNode data={subjectData} allChars={allChars} />
             {spouse && (
               <div className="flex items-center gap-0">
                 <HLine />
-                <FamilyNode data={spouse} />
+                <FamilyNode data={spouse} allChars={allChars} />
               </div>
             )}
           </div>
 
-          {/* Enfants */}
           {children.length > 0 && (
             <>
               <VLine />
@@ -203,14 +200,13 @@ const FamilyTree = ({ character }: { character: Character }) => {
                 {children.map((m, i) => (
                   <div key={i} className="flex items-start gap-3">
                     {i > 0 && <div className="h-px w-8 self-center shrink-0 bg-border mt-14" />}
-                    <FamilyNode data={m} />
+                    <FamilyNode data={m} allChars={allChars} />
                   </div>
                 ))}
               </div>
             </>
           )}
 
-          {/* Petits-enfants */}
           {grandchildren.length > 0 && (
             <>
               <VLine />
@@ -218,7 +214,7 @@ const FamilyTree = ({ character }: { character: Character }) => {
                 {grandchildren.map((m, i) => (
                   <div key={i} className="flex items-start gap-3">
                     {i > 0 && <div className="h-px w-8 self-center shrink-0 bg-border mt-14" />}
-                    <FamilyNode data={m} />
+                    <FamilyNode data={m} allChars={allChars} />
                   </div>
                 ))}
               </div>
@@ -238,17 +234,47 @@ const CharacterDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const lang = i18n.language.startsWith("fr") ? "fr" : "en";
 
-  const character = getCharacterBySlug(slug);
+  const [character, setCharacter] = useState<ApiCharacter | null>(null);
+  // Liste légère de tous les persos pour résoudre les liens famille
+  const [allChars, setAllChars]   = useState<ApiCharacter[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [notFound, setNotFound]   = useState(false);
+  const [tab, setTab]             = useState<'biography' | 'family'>('biography');
+
+  useEffect(() => {
+    if (!slug) return;
+    setLoading(true);
+    Promise.all([
+      apiFetch<ApiCharacter>(`/api/characters/${slug}`),
+      apiFetch<ApiCharacter[]>('/api/characters'),
+    ])
+      .then(([detail, list]) => {
+        setCharacter(detail);
+        setAllChars(list);
+      })
+      .catch(e => {
+        if (e?.status === 404) setNotFound(true);
+      })
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  const tr = character ? pickTranslation(character, lang) : undefined;
 
   useSEO({
     title: character?.name,
-    description: character
-      ? localizeChar(character.description, lang).slice(0, 160)
-      : undefined,
+    description: tr?.description?.slice(0, 160) ?? undefined,
     path: slug ? `/characters/${slug}` : undefined,
   });
 
-  if (!character) {
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (notFound || !character) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-muted-foreground">
         <UserCircle2 className="h-10 w-10 opacity-20" />
@@ -260,10 +286,10 @@ const CharacterDetail = () => {
     );
   }
 
-  const status  = statusConfig[character.status];
-  const species = speciesConfig[character.species];
-  const hasFamily = !!(character.family && character.family.length > 0);
-  const [tab, setTab] = useState<'biography' | 'family'>('biography');
+  const status     = statusConfig[character.status];
+  const species    = speciesConfig[character.species];
+  const hasFamily  = !!(character.familyMembers && character.familyMembers.length > 0);
+  const hasBiography = !!(character.biographySections && character.biographySections.length > 0);
 
   return (
     <>
@@ -275,7 +301,7 @@ const CharacterDetail = () => {
         title={character.name}
         label={t("characters.title")}
         labelIcon={UserCircle2}
-        subtitle={localizeChar(character.title, lang)}
+        subtitle={tr?.title ?? ''}
       />
 
       <div className="container py-8">
@@ -318,11 +344,7 @@ const CharacterDetail = () => {
             {/* Portrait */}
             <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-border bg-secondary flex items-center justify-center">
               {character.image ? (
-                <img
-                  src={character.image}
-                  alt={character.name}
-                  className="h-full w-full object-cover object-top"
-                />
+                <img src={character.image} alt={character.name} className="h-full w-full object-cover object-top" />
               ) : (
                 <UserCircle2 className="h-24 w-24 text-muted-foreground/20" />
               )}
@@ -345,7 +367,7 @@ const CharacterDetail = () => {
               </div>
               <div className="flex items-start justify-between gap-4 px-4 py-3">
                 <span className="text-xs font-medium text-muted-foreground shrink-0">{t("characters.labelAffiliation")}</span>
-                <span className="text-xs text-foreground text-right">{localizeChar(character.affiliation, lang)}</span>
+                <span className="text-xs text-foreground text-right">{tr?.affiliation ?? '—'}</span>
               </div>
               {(character.born || character.died) && (
                 <div className="flex items-center justify-between gap-2 px-4 py-3">
@@ -371,7 +393,7 @@ const CharacterDetail = () => {
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-medium text-muted-foreground">{t("characters.linkedCompany")}</p>
                   <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                    {localizeChar(character.affiliation, lang)}
+                    {tr?.affiliation ?? character.companySlug}
                   </p>
                 </div>
                 <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 group-hover:text-primary transition-colors" />
@@ -380,56 +402,54 @@ const CharacterDetail = () => {
           </div>
 
           {/* ── Colonne droite ────────────────────────────────────────── */}
-          <div className="flex flex-col gap-4">
+          <div className="space-y-4">
 
-            {/* Biographie */}
-            {tab === 'biography' && (
+            {tab === 'biography' ? (
               <>
-                <div className="rounded-xl border border-border bg-card px-6 py-5">
-                  <div className="mb-3 flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-primary" />
-                    <h2 className="font-display text-base font-semibold text-foreground">
-                      {t('characters.biography')}
-                    </h2>
+                {/* Description courte si pas de biographie */}
+                {!hasBiography && tr?.description && (
+                  <div className="rounded-xl border border-border bg-card p-5">
+                    <p className="text-sm leading-relaxed text-foreground">{tr.description}</p>
                   </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {localizeChar(character.description, lang)}
-                  </p>
-                </div>
+                )}
 
-                {character.biography?.map((section, i) => (
-                  <div key={i} className="rounded-xl border border-border bg-card px-6 py-5">
-                    <h3 className="mb-3 flex items-center gap-2.5 font-display text-sm font-semibold text-foreground">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                        {i + 1}
-                      </span>
-                      {localizeChar(section.title, lang)}
-                    </h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {localizeChar(section.content, lang)}
-                    </p>
-                  </div>
-                ))}
+                {/* Sections biographiques */}
+                {hasBiography && character.biographySections!
+                  .slice()
+                  .sort((a, b) => a.position - b.position)
+                  .map((section, i) => {
+                    const st = pickSectionTranslation(section, lang);
+                    if (!st) return null;
+                    return (
+                      <div key={i} className="rounded-xl border border-border bg-card p-5">
+                        <h2 className="mb-3 font-display text-base font-semibold text-foreground">
+                          {st.title}
+                        </h2>
+                        <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                          {st.content}
+                        </p>
+                      </div>
+                    );
+                  })}
               </>
+            ) : (
+              <FamilyTree character={character} allChars={allChars} />
             )}
 
-            {/* Arbre généalogique */}
-            {tab === 'family' && hasFamily && (
-              <FamilyTree character={character} />
-            )}
           </div>
         </div>
 
-        {/* ── Back link ──────────────────────────────────────────────── */}
+        {/* Retour */}
         <div className="mt-8">
           <Link
             href="/characters"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
             {t("characters.backToList")}
           </Link>
         </div>
+
       </div>
     </>
   );

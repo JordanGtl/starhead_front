@@ -1,9 +1,13 @@
 'use client';
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Search, UserCircle2, X } from "lucide-react";
+import { Search, UserCircle2, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { CHARACTERS, localizeChar, characterAffiliations, type Character, type CharacterStatus, type CharacterSpecies } from "@/data/characters";
+import { apiFetch } from "@/lib/api";
+import {
+  ApiCharacter, CharacterStatus, CharacterSpecies,
+  pickTranslation, extractAffiliations,
+} from "@/data/characters";
 import { useSEO } from "@/hooks/useSEO";
 import PageHeader from "@/components/PageHeader";
 
@@ -25,9 +29,10 @@ const speciesConfig: Record<CharacterSpecies, { labelKey: string; color: string 
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
-const CharacterCard = ({ character }: { character: Character }) => {
+const CharacterCard = ({ character }: { character: ApiCharacter }) => {
   const { t, i18n } = useTranslation();
   const lang   = i18n.language.startsWith("fr") ? "fr" : "en";
+  const tr     = pickTranslation(character, lang);
   const status  = statusConfig[character.status];
   const species = speciesConfig[character.species];
 
@@ -57,10 +62,10 @@ const CharacterCard = ({ character }: { character: Character }) => {
           {character.name}
         </h3>
         <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
-          {localizeChar(character.title, lang)}
+          {tr?.title ?? '—'}
         </p>
         <p className="mt-1 text-[11px] text-muted-foreground/70 line-clamp-1">
-          {localizeChar(character.affiliation, lang)}
+          {tr?.affiliation ?? '—'}
         </p>
 
         {/* Dates */}
@@ -74,7 +79,7 @@ const CharacterCard = ({ character }: { character: Character }) => {
 
         {/* Description */}
         <p className="mt-2 flex-1 text-[11px] leading-relaxed text-muted-foreground line-clamp-3">
-          {localizeChar(character.description, lang)}
+          {tr?.description ?? '—'}
         </p>
 
         {/* Badges */}
@@ -104,27 +109,40 @@ const Characters = () => {
     path: "/characters",
   });
 
-  const [search, setSearch]               = useState("");
-  const [activeStatus, setActiveStatus]   = useState<CharacterStatus | null>(null);
-  const [activeSpecies, setActiveSpecies] = useState<CharacterSpecies | null>(null);
-  const [activeAffil, setActiveAffil]     = useState<string | null>(null);
+  const [all, setAll]                      = useState<ApiCharacter[]>([]);
+  const [loading, setLoading]              = useState(true);
+  const [error, setError]                  = useState<string | null>(null);
+  const [search, setSearch]                = useState("");
+  const [activeStatus, setActiveStatus]    = useState<CharacterStatus | null>(null);
+  const [activeSpecies, setActiveSpecies]  = useState<CharacterSpecies | null>(null);
+  const [activeAffil, setActiveAffil]      = useState<string | null>(null);
 
-  const affiliations = useMemo(() => characterAffiliations(CHARACTERS), []);
+  useEffect(() => {
+    apiFetch<ApiCharacter[]>('/api/characters')
+      .then(setAll)
+      .catch(e => setError(e?.message ?? 'Erreur de chargement'))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filtered = useMemo(() =>
-    CHARACTERS.filter(c => {
-      const q = search.toLowerCase();
+  const affiliations = useMemo(() => extractAffiliations(all), [all]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return all.filter(c => {
+      const tr = pickTranslation(c, lang);
       const matchSearch = !search
         || c.name.toLowerCase().includes(q)
-        || localizeChar(c.title, lang).toLowerCase().includes(q)
-        || localizeChar(c.affiliation, lang).toLowerCase().includes(q)
-        || localizeChar(c.description, lang).toLowerCase().includes(q);
+        || (tr?.title ?? '').toLowerCase().includes(q)
+        || (tr?.affiliation ?? '').toLowerCase().includes(q)
+        || (tr?.description ?? '').toLowerCase().includes(q);
       const matchStatus  = !activeStatus  || c.status  === activeStatus;
       const matchSpecies = !activeSpecies || c.species === activeSpecies;
-      const matchAffil   = !activeAffil   || c.affiliation.en === activeAffil;
+      const matchAffil   = !activeAffil   || (
+        c.translations.find(t => t.locale === 'en')?.affiliation === activeAffil
+      );
       return matchSearch && matchStatus && matchSpecies && matchAffil;
-    }),
-  [search, activeStatus, activeSpecies, activeAffil, lang]);
+    });
+  }, [search, activeStatus, activeSpecies, activeAffil, all, lang]);
 
   const hasFilters = !!search || !!activeStatus || !!activeSpecies || !!activeAffil;
 
@@ -135,7 +153,7 @@ const Characters = () => {
     setActiveAffil(null);
   };
 
-  const statuses: CharacterStatus[]   = ["alive", "deceased", "unknown"];
+  const statuses: CharacterStatus[]    = ["alive", "deceased", "unknown"];
   const speciesList: CharacterSpecies[] = ["human", "xi'an", "vanduul", "banu"];
 
   return (
@@ -163,105 +181,93 @@ const Characters = () => {
             />
           </div>
           {hasFilters && (
-            <button
-              onClick={clearFilters}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="h-3.5 w-3.5" />
-              {t("characters.reset")}
+            <button onClick={clearFilters} className="flex h-10 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm text-muted-foreground hover:text-foreground">
+              <span className="text-xs">{t("characters.reset")}</span>
             </button>
           )}
         </div>
 
-        {/* Filters row */}
-        <div className="mb-6 flex flex-wrap gap-4">
-
-          {/* Status */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("characters.filterStatus")}
-            </span>
-            {statuses.map(s => {
-              const cfg = statusConfig[s];
-              return (
-                <button
-                  key={s}
-                  onClick={() => setActiveStatus(activeStatus === s ? null : s)}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1 text-xs font-medium transition-colors ${
-                    activeStatus === s ? cfg.badge : "border-border bg-card text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                  {t(cfg.labelKey)}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Species */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("characters.filterSpecies")}
-            </span>
-            {speciesList.map(sp => {
-              const cfg = speciesConfig[sp];
-              return (
-                <button
-                  key={sp}
-                  onClick={() => setActiveSpecies(activeSpecies === sp ? null : sp)}
-                  className={`rounded-lg border px-3 py-1 text-xs font-medium transition-colors ${
-                    activeSpecies === sp ? cfg.color : "border-border bg-card text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {t(cfg.labelKey)}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Affiliation */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("characters.filterAffiliation")}
-            </span>
-            {affiliations.map(aff => (
-              <button
-                key={aff}
-                onClick={() => setActiveAffil(activeAffil === aff ? null : aff)}
-                className={`rounded-lg border px-3 py-1 text-xs font-medium transition-colors ${
-                  activeAffil === aff
-                    ? "border-primary/50 bg-primary/10 text-primary"
-                    : "border-border bg-card text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {aff}
-              </button>
-            ))}
-          </div>
+        {/* Filtres statut */}
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setActiveStatus(null)}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${!activeStatus ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:text-foreground'}`}
+          >
+            {t("characters.all")}
+          </button>
+          {statuses.map(s => (
+            <button
+              key={s}
+              onClick={() => setActiveStatus(activeStatus === s ? null : s)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${activeStatus === s ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:text-foreground'}`}
+            >
+              {t(`characters.${s}`)}
+            </button>
+          ))}
         </div>
 
-        {/* Counter */}
-        <p className="mb-4 text-sm text-muted-foreground">
-          {t("characters.count", { count: filtered.length })}
-        </p>
+        {/* Filtres espèce */}
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {speciesList.map(s => (
+            <button
+              key={s}
+              onClick={() => setActiveSpecies(activeSpecies === s ? null : s)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${activeSpecies === s ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:text-foreground'}`}
+            >
+              {t(`characters.${s === "xi'an" ? 'xian' : s}`)}
+            </button>
+          ))}
+        </div>
 
-        {/* Grid */}
-        {filtered.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map(c => (
-              <CharacterCard key={c.id} character={c} />
+        {/* Filtres affiliation */}
+        {affiliations.length > 0 && (
+          <div className="mb-6 flex flex-wrap gap-1.5">
+            {affiliations.map(a => (
+              <button
+                key={a}
+                onClick={() => setActiveAffil(activeAffil === a ? null : a)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${activeAffil === a ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:text-foreground'}`}
+              >
+                {a}
+              </button>
             ))}
           </div>
-        ) : (
-          <div className="flex flex-col items-center py-24 text-center">
-            <UserCircle2 className="mb-4 h-12 w-12 text-muted-foreground/20" />
-            <p className="text-base font-medium text-muted-foreground">{t("characters.noResult")}</p>
-            {hasFilters && (
-              <button onClick={clearFilters} className="mt-3 text-sm text-primary hover:underline">
-                {t("characters.reset")}
-              </button>
-            )}
+        )}
+
+        {/* États */}
+        {loading && (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
+        )}
+
+        {error && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mb-4">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            {/* Count */}
+            <p className="mb-4 text-xs text-muted-foreground">
+              {t("characters.count", { count: filtered.length })}
+            </p>
+
+            {/* Grille */}
+            {filtered.length === 0 ? (
+              <div className="flex min-h-[30vh] flex-col items-center justify-center gap-3 text-muted-foreground">
+                <UserCircle2 className="h-10 w-10 opacity-20" />
+                <p className="text-sm">{t("characters.noResult")}</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {filtered.map(c => (
+                  <CharacterCard key={c.id} character={c} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </>

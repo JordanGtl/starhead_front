@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Newspaper, Users, ChevronRight, Shield, ArrowLeft, Tag, Radio, Swords, Building2, Menu, X, BookOpen, ScrollText, Rocket, BarChart2 } from "lucide-react";
+import { Newspaper, Users, ChevronRight, Shield, ArrowLeft, Tag, Radio, Swords, Building2, Menu, X, BookOpen, ScrollText, Rocket, BarChart2, UserCircle2 } from "lucide-react";
 
 const NAV_CATEGORIES = [
   {
@@ -20,9 +20,10 @@ const NAV_CATEGORIES = [
     items: [
       { label: "Factions",    path: "/admin/factions",  icon: Swords    },
       { label: "Entreprises", path: "/admin/companies", icon: Building2 },
-      { label: "Lore",        path: "/admin/lore",        icon: BookOpen   },
-      { label: "Blueprints",  path: "/admin/blueprints",  icon: ScrollText },
-      { label: "Vaisseaux",   path: "/admin/ships",       icon: Rocket     },
+      { label: "Lore",         path: "/admin/lore",        icon: BookOpen    },
+      { label: "Personnages", path: "/admin/characters",  icon: UserCircle2 },
+      { label: "Blueprints",  path: "/admin/blueprints",  icon: ScrollText  },
+      { label: "Vaisseaux",   path: "/admin/ships",       icon: Rocket      },
     ],
   },
 ];
