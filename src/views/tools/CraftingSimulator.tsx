@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useVersion } from "@/contexts/VersionContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { Tag } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useSEO } from "@/hooks/useSEO";
 import PageHeader from "@/components/PageHeader";
@@ -86,10 +88,23 @@ interface SimTier {
   optionalCosts: CostNode[] | null;
 }
 
+interface ApiMission {
+  id:           number;
+  ref:          string;
+  title:        string | null;
+  type:         string | null;
+  source:       string | null;
+  missionGiver: string | null;
+  difficulty:   number | null;
+  lawful:       boolean;
+  reward:       { amount: number; max: number | null; currency: string | null } | null;
+}
+
 interface ApiBlueprintDetail extends ApiBlueprintSummary {
   ingredients: Ingredient[];
   tiers:       SimTier[] | null;
   rewardPools: string[] | null;
+  missions:    ApiMission[] | null;
 }
 
 interface SlotQuality {
@@ -287,7 +302,7 @@ const QualityPanel = ({ tiers, qualities, setQualities, selOpt, setSelOpt, local
       {aggregated.size > 0 && (
         <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2">
           {[...aggregated.entries()].map(([id, { pm, mods }]) => {
-            const avg = mods.reduce((a, b) => a + b, 0) / mods.length;
+            const avg = mods.reduce((a, b) => a * b, 1);
             return (
               <span key={id} className="inline-flex items-center gap-1 text-xs">
                 <span className="text-muted-foreground">{translateProperty(pm.propertyName, locale) ?? id}</span>
@@ -299,6 +314,7 @@ const QualityPanel = ({ tiers, qualities, setQualities, selOpt, setSelOpt, local
       )}
 
       {/* Per-slot cards */}
+      <div className="grid gap-3 lg:grid-cols-2">
       {slots.map(slot => {
         const q      = getQ(slot.key);
         const selIdx = selOpt[slot.key] ?? 0;
@@ -307,7 +323,7 @@ const QualityPanel = ({ tiers, qualities, setQualities, selOpt, setSelOpt, local
           <div key={slot.key} className="overflow-hidden rounded-xl border border-border bg-card">
             {/* Header */}
             <div className="flex items-center gap-2.5 border-b border-border/50 bg-secondary/20 px-4 py-2.5">
-              <div className="flex h-6 w-6 items-center justify-center rounded border border-border bg-card">
+              <div className="flex h-6 w-6 items-center justify-center rounded border border-border bg-card shrink-0">
                 <Box className="h-3 w-3 text-primary/60" />
               </div>
               <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">{slot.label}</span>
@@ -376,6 +392,7 @@ const QualityPanel = ({ tiers, qualities, setQualities, selOpt, setSelOpt, local
           </div>
         );
       })}
+      </div>
     </div>
   );
 };
@@ -472,7 +489,7 @@ const BlueprintConfigurator = ({
 
   const tabs: { id: DetailTab; label: string; count?: number }[] = [
     { id: "recipe",     label: t('tools.crafting.tabRecipe'),     count: mandatory.length },
-    { id: "obtain",     label: t('tools.crafting.tabObtain'),     count: detail.rewardPools?.length },
+    { id: "obtain",     label: t('tools.crafting.tabObtain'),     count: detail.missions?.length || detail.rewardPools?.length },
     { id: "properties", label: t('tools.crafting.tabProperties') },
   ];
 
@@ -635,33 +652,97 @@ const BlueprintConfigurator = ({
           </div>
         )}
 
-        {tab === "obtain" && (
-          <div>
-            {detail.rewardPools?.length ? (
-              <div className="space-y-2">
-                <p className="mb-3 text-xs text-muted-foreground">
-                  {t('tools.crafting.obtainDesc')}
-                </p>
-                {detail.rewardPools.map(pool => (
-                  <div key={pool} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                      <Award className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-foreground">{formatPoolName(pool)}</p>
-                      <p className="text-[10px] font-mono text-muted-foreground/40">{pool}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
+        {tab === "obtain" && (() => {
+          if (!detail.missions || detail.missions.length === 0) {
+            return (
               <div className="flex flex-col items-center py-10 text-center text-muted-foreground">
                 <Award className="mb-3 h-8 w-8 opacity-20" />
                 <p className="text-sm">{t('tools.crafting.noMissions')}</p>
               </div>
-            )}
-          </div>
-        )}
+            );
+          }
+
+          // Grouper par titre (null → ref comme clé)
+          const grouped = new Map<string, ApiMission[]>();
+          for (const m of detail.missions) {
+            const key = m.title ?? m.ref;
+            const group = grouped.get(key);
+            if (group) group.push(m); else grouped.set(key, [m]);
+          }
+
+          return (
+            <div className="space-y-2">
+              {[...grouped.entries()].map(([title, group]) => {
+                const first = group[0];
+                const givers = [...new Set(group.map(m => m.missionGiver).filter(Boolean))];
+                const rewards = group.filter(m => m.reward);
+                const reward  = rewards[0]?.reward ?? null;
+                const count   = group.length;
+
+                return (
+                  <div key={title} className="rounded-lg border border-border bg-card overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-start gap-3 px-3 py-2.5">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 mt-0.5">
+                        <Award className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-foreground leading-tight">{title}</p>
+                          {count > 1 && (
+                            <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                              ×{count}
+                            </span>
+                          )}
+                        </div>
+                        {givers.length > 0 && (
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">
+                            {givers.join(' · ')}
+                          </p>
+                        )}
+                      </div>
+                      {/* Reward */}
+                      {reward && (
+                        <div className="shrink-0 text-right">
+                          <p className="text-xs font-bold text-primary font-mono">
+                            {reward.amount.toLocaleString()}
+                            {reward.max ? `–${reward.max.toLocaleString()}` : ""}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground">{reward.currency}</p>
+                        </div>
+                      )}
+                    </div>
+                    {/* Footer badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 border-t border-border/50 bg-secondary/20 px-3 py-1.5">
+                      {first.type && (
+                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                          {first.type}
+                        </span>
+                      )}
+                      {first.source && (
+                        <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          {first.source}
+                        </span>
+                      )}
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                        first.lawful
+                          ? "bg-emerald-500/10 text-emerald-400"
+                          : "bg-red-500/10 text-red-400"
+                      }`}>
+                        {first.lawful ? t('tools.crafting.lawful') : t('tools.crafting.unlawful')}
+                      </span>
+                      {first.difficulty !== null && first.difficulty >= 0 && (
+                        <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
+                          {t('tools.crafting.difficulty')} {first.difficulty}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {tab === "properties" && detail.tiers && (
           <QualityPanel
@@ -972,7 +1053,7 @@ const CartSidebar = ({
                 {!isEditing && agg.size > 0 && (
                   <div className="rounded-md border border-border/40 bg-secondary/20 px-2.5 py-2 space-y-1">
                     {[...agg.values()].map(({ name, mods }) => {
-                      const avg = mods.reduce((a, b) => a + b, 0) / mods.length;
+                      const avg = mods.reduce((a, b) => a * b, 1);
                       return (
                         <div key={name} className="flex items-center justify-between gap-2 text-[11px]">
                           <span className="text-muted-foreground/70 truncate">{name}</span>
@@ -1015,6 +1096,7 @@ const CartSidebar = ({
 const CraftingSimulator = () => {
   const { t, i18n }                      = useTranslation();
   const { selectedVersion }              = useVersion();
+  const { isAuthenticated }              = useAuth();
   const { save: saveToInventory, crafts: savedCrafts, loaded: inventoryLoaded } = useCraftingInventory();
 
   useSEO({
@@ -1169,6 +1251,19 @@ const CraftingSimulator = () => {
         labelIcon={FlaskConical}
         subtitle={t('tools.crafting.seoDesc')}
         bgImage="/images/crafting-bg.webp"
+        actions={isAuthenticated && selectedVersion ? (
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-card/80 px-2.5 py-1 font-mono text-xs backdrop-blur-sm">
+            <Tag className="h-3 w-3 text-primary/70" />
+            <span className="font-semibold text-foreground">{selectedVersion.label}</span>
+            <span className={`rounded-sm px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+              selectedVersion.isLive
+                ? "bg-emerald-500/20 text-emerald-400"
+                : "bg-amber-500/20 text-amber-400"
+            }`}>
+              {selectedVersion.isLive ? "LIVE" : "PTU"}
+            </span>
+          </span>
+        ) : undefined}
       />
 
       {/* Back button (detail view only) */}

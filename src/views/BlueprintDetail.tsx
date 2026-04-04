@@ -400,82 +400,88 @@ const CraftedPropertiesPanel = ({ tiers }: { tiers: Tier[] }) => {
                 )}
               </div>
 
-              <div className="px-4 py-3 space-y-3">
-                {/* Resource selector if multiple options */}
-                {slot.options.length > 1 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {slot.options.map((opt, i) => (
-                      <button
-                        key={opt.ref}
-                        onClick={() => setSelected(p => ({ ...p, [slot.key]: i }))}
-                        className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
-                          selIdx === i
-                            ? "border-primary/60 bg-primary/10 text-primary"
-                            : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
-                        }`}
-                      >
-                        {opt.name ?? opt.ref.slice(0, 8)}
-                      </button>
-                    ))}
-                  </div>
-                ) : option ? (
-                  /* Single resource — show name + quantity prominently */
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-base font-bold text-primary">
-                      {option.name ?? option.ref.slice(0, 8)}
-                    </span>
-                    {option.quantity != null && (
-                      <span className="text-sm text-muted-foreground">
-                        {option.quantity} {option.unit ?? ""}
-                      </span>
-                    )}
-                  </div>
-                ) : null}
-
-                {/* Quality slider */}
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                      Qualité
-                    </span>
-                    <input
-                      type="number"
-                      min={0} max={1000} step={50}
-                      value={q}
-                      onChange={e => {
-                        const v = Math.max(0, Math.min(1000, Number(e.target.value)));
-                        setQualities(p => ({ ...p, [slot.key]: v }));
-                      }}
-                      className="w-16 rounded border border-primary/40 bg-primary/5 px-2 py-0.5 text-center font-mono text-xs font-bold text-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                  <input
-                    type="range"
-                    min={0} max={1000} step={50}
-                    value={q}
-                    onChange={e => setQualities(p => ({ ...p, [slot.key]: Number(e.target.value) }))}
-                    className="w-full accent-primary"
-                  />
-                </div>
-
-                {/* Property modifier badges */}
-                <div className="flex flex-wrap gap-2">
-                  {slot.propertyModifiers.map(pm => {
-                    const mod = computeModifier(pm, q);
-                    return (
-                      <span
-                        key={pm.propertyRef}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-xs"
-                      >
-                        <span className="font-medium text-foreground">
-                          {pm.propertyName ?? pm.propertyInternal ?? "—"}
+              <div className="px-4 py-3">
+                <div className="flex gap-4">
+                  {/* Gauche : ressource + slider */}
+                  <div className="flex-1 space-y-3">
+                    {/* Resource selector if multiple options */}
+                    {slot.options.length > 1 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {slot.options.map((opt, i) => (
+                          <button
+                            key={opt.ref}
+                            onClick={() => setSelected(p => ({ ...p, [slot.key]: i }))}
+                            className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
+                              selIdx === i
+                                ? "border-primary/60 bg-primary/10 text-primary"
+                                : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
+                            }`}
+                          >
+                            {opt.name ?? opt.ref.slice(0, 8)}
+                          </button>
+                        ))}
+                      </div>
+                    ) : option ? (
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-base font-bold text-primary">
+                          {option.name ?? option.ref.slice(0, 8)}
                         </span>
-                        <span className={`font-mono font-bold ${modColor(mod)}`}>
-                          {modLabel(mod)}
+                        {option.quantity != null && (
+                          <span className="text-sm text-muted-foreground">
+                            {option.quantity} {option.unit ?? ""}
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {/* Quality slider */}
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                          Qualité
                         </span>
-                      </span>
-                    );
-                  })}
+                        <input
+                          type="number"
+                          min={0} max={1000} step={50}
+                          value={q}
+                          onChange={e => {
+                            const v = Math.max(0, Math.min(1000, Number(e.target.value)));
+                            setQualities(p => ({ ...p, [slot.key]: v }));
+                          }}
+                          className="w-16 rounded border border-primary/40 bg-primary/5 px-2 py-0.5 text-center font-mono text-xs font-bold text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <input
+                        type="range"
+                        min={0} max={1000} step={50}
+                        value={q}
+                        onChange={e => setQualities(p => ({ ...p, [slot.key]: Number(e.target.value) }))}
+                        className="w-full accent-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Droite : statistiques (property modifier badges) */}
+                  {slot.propertyModifiers.length > 0 && (
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      {slot.propertyModifiers.map(pm => {
+                        const mod = computeModifier(pm, q);
+                        return (
+                          <span
+                            key={pm.propertyRef}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-xs"
+                          >
+                            <span className="font-medium text-foreground">
+                              {pm.propertyName ?? pm.propertyInternal ?? "—"}
+                            </span>
+                            <span className={`font-mono font-bold ${modColor(mod)}`}>
+                              {modLabel(mod)}
+                            </span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -684,23 +690,6 @@ const BlueprintDetail = () => {
               </div>
             </div>
 
-            {/* ── Recette de craft ── */}
-            {tier && (
-              <div>
-                <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                  <Beaker className="h-4 w-4" />
-                  Recette de craft
-                </h2>
-                <div className="space-y-3">
-                  {tier.mandatoryCost && (
-                    <CostTree node={tier.mandatoryCost} label="Ingrédients obligatoires" nameMap={nameMap} />
-                  )}
-                  {tier.optionalCosts?.map((optNode, i) => (
-                    <CostTree key={i} node={optNode} label={`Ingrédients optionnels${tier.optionalCosts!.length > 1 ? ` (${i + 1})` : ""}`} nameMap={nameMap} />
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* ── Propriétés craftées ── */}
             {bp.tiers && <CraftedPropertiesPanel tiers={bp.tiers} />}

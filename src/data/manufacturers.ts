@@ -21,6 +21,17 @@ export interface RelationItem {
   description: LocalizedString;
 }
 
+export interface SourceItem {
+  id:    number;
+  title: string;
+  url:   string;
+}
+
+export interface LoreSection {
+  title:   LocalizedString;
+  content: LocalizedString;
+}
+
 export interface Manufacturer {
   id:           number;
   name:         string;
@@ -34,6 +45,8 @@ export interface Manufacturer {
   lore:         LocalizedString | null;
   timeline:     TimelineEvent[] | null;
   relations:    RelationItem[] | null;
+  sources:      SourceItem[] | null;
+  loreSections: LoreSection[] | null;
 }
 
 /** Clés de filtre invariantes (valeur FR), utilisées pour matcher les tags localisés */

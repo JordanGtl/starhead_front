@@ -22,11 +22,13 @@ export interface PageHeaderProps {
   subtitle?: string;
   /** Image de fond personnalisée (remplace /hero-bg.jpg) */
   bgImage?: string;
+  /** Contenu aligné à droite du titre (ex: badge version) */
+  actions?: React.ReactNode;
 }
 
 // ─── Composant ────────────────────────────────────────────────────────────────
 
-const PageHeader = ({ breadcrumb, title, label, labelIcon: LabelIcon, subtitle, bgImage }: PageHeaderProps) => (
+const PageHeader = ({ breadcrumb, title, label, labelIcon: LabelIcon, subtitle, bgImage, actions }: PageHeaderProps) => (
   <>
     {/* Breadcrumb collé sous la navbar */}
     <div className="sticky top-16 z-40 border-b border-border/60 bg-card/90 backdrop-blur-xl">
@@ -73,7 +75,10 @@ const PageHeader = ({ breadcrumb, title, label, labelIcon: LabelIcon, subtitle, 
             </span>
           </div>
         )}
-        <h1 className="font-display text-4xl font-bold text-foreground">{title}</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="font-display text-4xl font-bold text-foreground">{title}</h1>
+          {actions && <div className="flex items-center gap-2">{actions}</div>}
+        </div>
         {subtitle && (
           <p className="mt-2 max-w-lg text-sm text-muted-foreground">{subtitle}</p>
         )}

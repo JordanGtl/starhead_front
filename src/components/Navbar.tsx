@@ -1,7 +1,7 @@
 'use client';
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Gem, Radio, ScrollText, Route, PersonStanding, Sword, Package, GitCompareArrows } from "lucide-react";
+import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Radio, ScrollText, Route, PersonStanding, Sword, Package, GitCompareArrows } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVersion } from "@/contexts/VersionContext";
@@ -120,7 +120,6 @@ const toolItems = [
   { labelKey: "tools.loadout.title",  path: "/ships/configure", icon: Settings2,         descKey: "tools.loadout.desc"  },
   { labelKey: "tools.compare.title",  path: "/ships/compare",   icon: GitCompareArrows,  descKey: "tools.compare.desc"  },
   { labelKey: "tools.crafting.title", path: "/tools/crafting",  icon: FlaskConical,      descKey: "tools.crafting.desc" },
-  { labelKey: "tools.refining.title", path: "/tools/refining",  icon: Gem,          descKey: "tools.refining.desc" },
   { labelKey: "tools.ccu.title",      path: "/tools/ccu",       icon: Route,        descKey: "tools.ccu.desc"      },
 ];
 
@@ -141,7 +140,15 @@ const Navbar = () => {
   const { versions, selectedVersion, setSelectedVersion } = useVersion();
   const { t, i18n } = useTranslation();
 
-  const currentLang = LANGUAGES.find((l) => l.code === i18n.language) ?? LANGUAGES[0];
+  // SSR renders with 'en' (no browser detector), client detects the real language.
+  // Using a mounted flag avoids structural SVG mismatches between server and client.
+  const EN_LANG = LANGUAGES.find((l) => l.code === 'en') ?? LANGUAGES[0];
+  const [currentLang, setCurrentLang] = useState(EN_LANG);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setCurrentLang(LANGUAGES.find((l) => l.code === i18n.language) ?? EN_LANG);
+    setMounted(true);
+  }, [i18n.language]);
 
   // Ferme tout sur changement de route
   useEffect(() => {
@@ -197,7 +204,7 @@ const Navbar = () => {
             }`}
           >
             <Database className="h-3.5 w-3.5" />
-            {t("nav.database")}
+            <span suppressHydrationWarning>{t("nav.database")}</span>
             <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openMenu === "db" ? "rotate-180" : ""}`} />
           </button>
 
@@ -211,7 +218,7 @@ const Navbar = () => {
             }`}
           >
             <Wrench className="h-3.5 w-3.5" />
-            {t("nav.tools")}
+            <span suppressHydrationWarning>{t("nav.tools")}</span>
             <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openMenu === "tools" ? "rotate-180" : ""}`} />
           </button>
 
@@ -225,7 +232,7 @@ const Navbar = () => {
             }`}
           >
             <BookOpen className="h-3.5 w-3.5" />
-            {t("nav.lore")}
+            <span suppressHydrationWarning>{t("nav.lore")}</span>
             <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openMenu === "lore" ? "rotate-180" : ""}`} />
           </button>
 
@@ -241,7 +248,7 @@ const Navbar = () => {
                   : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground border-b-2 border-transparent"
               }`}
             >
-              {t(link.labelKey)}
+              <span suppressHydrationWarning>{t(link.labelKey)}</span>
             </Link>
           ))}
         </div>
@@ -333,6 +340,7 @@ const Navbar = () => {
               onClick={() => setLangOpen((o) => !o)}
               className="flex h-full items-center gap-1.5 border-r border-border/50 bg-secondary/20 px-4 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               title={t("nav.language")}
+              suppressHydrationWarning
             >
               <span className="flex items-center gap-1.5">
                 <span className="inline-flex shrink-0 overflow-hidden rounded-[2px]"><currentLang.Flag /></span>
@@ -431,7 +439,7 @@ const Navbar = () => {
                       className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                     >
                       <LogOut className="h-4 w-4" />
-                      {t("nav.logout")}
+                      <span suppressHydrationWarning>{t("nav.logout")}</span>
                     </button>
                   </div>
                 </div>
@@ -445,7 +453,7 @@ const Navbar = () => {
             >
               <span className="flex items-center gap-1.5">
                 <LogIn className="h-3.5 w-3.5" />
-                {t("nav.login")}
+                <span suppressHydrationWarning>{t("nav.login")}</span>
               </span>
             </Link>
           )}
@@ -461,7 +469,7 @@ const Navbar = () => {
       </div>
 
       {/* ─── Mega menu Base de données ─────────────────────────────────────────── */}
-      <div
+      {mounted && <div
         className={`absolute left-0 right-0 top-full hidden md:block overflow-hidden border-b border-border bg-background shadow-2xl transition-all duration-150 ${
           openMenu === "db"
             ? "opacity-100 pointer-events-auto translate-y-0"
@@ -469,7 +477,7 @@ const Navbar = () => {
         }`}
       >
         <div className="container py-5">
-          <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          <p suppressHydrationWarning className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             {t("nav.databaseSubtitle")}
           </p>
           <div className="flex gap-6">
@@ -539,8 +547,10 @@ const Navbar = () => {
         </div>
       </div>
 
+      }
+
       {/* ─── Mega menu Outils ──────────────────────────────────────────────────── */}
-      <div
+      {mounted && <div
         className={`absolute left-0 right-0 top-full hidden md:block overflow-hidden border-b border-border bg-background shadow-2xl transition-all duration-150 ${
           openMenu === "tools"
             ? "opacity-100 pointer-events-auto translate-y-0"
@@ -548,7 +558,7 @@ const Navbar = () => {
         }`}
       >
         <div className="container py-5">
-          <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          <p suppressHydrationWarning className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             {t("nav.toolsSubtitle")}
           </p>
           <div className="grid grid-cols-4 gap-x-6 gap-y-0">
@@ -579,8 +589,10 @@ const Navbar = () => {
         </div>
       </div>
 
+      }
+
       {/* ─── Mega menu Lore ───────────────────────────────────────────────────── */}
-      <div
+      {mounted && <div
         className={`absolute left-0 right-0 top-full hidden md:block overflow-hidden border-b border-border bg-background shadow-2xl transition-all duration-150 ${
           openMenu === "lore"
             ? "opacity-100 pointer-events-auto translate-y-0"
@@ -588,7 +600,7 @@ const Navbar = () => {
         }`}
       >
         <div className="container py-5">
-          <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          <p suppressHydrationWarning className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             {t("nav.loreSubtitle")}
           </p>
           <div className="grid grid-cols-4 gap-x-6 gap-y-0">
@@ -619,6 +631,8 @@ const Navbar = () => {
         </div>
       </div>
 
+      }
+
       {/* ─── Mobile menu ─── */}
       {mobileOpen && (
         <div className="border-t border-border bg-background p-4 md:hidden">
@@ -632,7 +646,7 @@ const Navbar = () => {
           >
             <span className="flex items-center gap-2">
               <Database className="h-4 w-4" />
-              {t("nav.database")}
+              <span suppressHydrationWarning>{t("nav.database")}</span>
             </span>
             <ChevronDown className={`h-4 w-4 transition-transform ${mobileDbOpen ? "rotate-180" : ""}`} />
           </button>
@@ -670,7 +684,7 @@ const Navbar = () => {
           >
             <span className="flex items-center gap-2">
               <Wrench className="h-4 w-4" />
-              {t("nav.tools")}
+              <span suppressHydrationWarning>{t("nav.tools")}</span>
             </span>
             <ChevronDown className={`h-4 w-4 transition-transform ${mobileToolsOpen ? "rotate-180" : ""}`} />
           </button>
@@ -708,7 +722,7 @@ const Navbar = () => {
           >
             <span className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
-              {t("nav.lore")}
+              <span suppressHydrationWarning>{t("nav.lore")}</span>
             </span>
             <ChevronDown className={`h-4 w-4 transition-transform ${mobileLoreOpen ? "rotate-180" : ""}`} />
           </button>
@@ -752,7 +766,7 @@ const Navbar = () => {
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                {t(link.labelKey)}
+                <span suppressHydrationWarning>{t(link.labelKey)}</span>
               </Link>
             );
           })}
@@ -787,7 +801,7 @@ const Navbar = () => {
                   className="flex w-full items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
                 >
                   <LogOut className="h-3.5 w-3.5" />
-                  {t("nav.logout")}
+                  <span suppressHydrationWarning>{t("nav.logout")}</span>
                 </button>
               </>
             ) : (
@@ -797,7 +811,7 @@ const Navbar = () => {
                 className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-primary"
               >
                 <LogIn className="h-3.5 w-3.5" />
-                {t("nav.login")}
+                <span suppressHydrationWarning>{t("nav.login")}</span>
               </Link>
             )}
           </div>

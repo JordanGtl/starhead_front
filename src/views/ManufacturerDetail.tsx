@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Building2, MapPin, Calendar, Tag, Loader2, ChevronRight, History, ChevronLeft, Shield, Users, Rocket } from "lucide-react";
+import { Building2, MapPin, Calendar, Tag, Loader2, ChevronRight, History, ChevronLeft, Shield, Users, Rocket, BookOpen, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { fetchManufacturer, localize, type Manufacturer } from "@/data/manufacturers";
 import { fetchShips, type Ship } from "@/data/ships";
@@ -26,7 +26,8 @@ const ManufacturerDetail = () => {
   const [shipsScroll, setShipsScroll]   = useState({ left: false, right: true });
   const loreRef     = useRef<HTMLParagraphElement>(null);
   const [loreOverflows, setLoreOverflows] = useState(false);
-  const [loreModalOpen, setLoreModalOpen] = useState(false);
+  const [loreExpanded, setLoreExpanded]         = useState(false);
+  const [sourcesModalOpen, setSourcesModalOpen] = useState(false);
 
   useSEO({
     title: manufacturer?.name,
@@ -125,6 +126,45 @@ const ManufacturerDetail = () => {
 
       <div className="container py-8 space-y-6">
 
+        {/* Bouton sources au-dessus du bloc */}
+        {manufacturer.sources && manufacturer.sources.length > 0 && (
+          <>
+            <div className="flex justify-end -mb-3">
+              <button
+                onClick={() => setSourcesModalOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                {t("manufacturers.sources")} ({manufacturer.sources.length})
+              </button>
+            </div>
+            <Dialog open={sourcesModalOpen} onOpenChange={setSourcesModalOpen}>
+              <DialogContent className="max-w-lg flex flex-col max-h-[75vh]">
+                <DialogHeader className="shrink-0">
+                  <DialogTitle className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                    {t("manufacturers.sources")} — {manufacturer.name}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="overflow-y-auto flex-1 divide-y divide-border/50 pr-1">
+                  {manufacturer.sources.map(src => (
+                    <a
+                      key={src.id}
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between gap-3 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span>{src.title}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-50" />
+                    </a>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
+
         {/* Card principale + Histoire côte à côte */}
         <div className="grid gap-6 lg:grid-cols-2">
 
@@ -185,50 +225,52 @@ const ManufacturerDetail = () => {
           {/* Histoire */}
           {manufacturer.lore && (
             <div className="rounded-xl border border-border bg-card p-6">
-              <h2 className="mb-4 flex items-center gap-2 font-display text-base font-semibold text-foreground">
-                <Building2 className="h-4 w-4 text-primary" />
-                {t("manufacturers.history")}
-              </h2>
+                <h2 className="mb-4 flex items-center gap-2 font-display text-base font-semibold text-foreground">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  {t("manufacturers.history")}
+                </h2>
 
-              {/* Contenu clippé à 112px */}
-              <div className="relative overflow-hidden" style={{ maxHeight: 112 }}>
-                <p ref={loreRef} className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
-                  {localize(manufacturer.lore, i18n.language)}
-                </p>
-                {/* Fondu bas si dépassement */}
-                {loreOverflows && (
-                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-                )}
-              </div>
-
-              {/* Bouton Lire plus */}
-              {loreOverflows && (
-                <button
-                  onClick={() => setLoreModalOpen(true)}
-                  className="mt-3 text-xs font-medium text-primary hover:underline transition-colors"
-                >
-                  {t("manufacturers.readMore")} →
-                </button>
-              )}
-
-              {/* Modale plein texte */}
-              <Dialog open={loreModalOpen} onOpenChange={setLoreModalOpen}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-primary" />
-                      {t("manufacturers.history")} — {manufacturer.name}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                <div className="relative overflow-hidden" style={{ maxHeight: 112 }}>
+                  <p ref={loreRef} className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
                     {localize(manufacturer.lore, i18n.language)}
                   </p>
-                </DialogContent>
-              </Dialog>
+                  {loreOverflows && (
+                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setLoreExpanded(v => !v)}
+                  className="mt-3 text-xs font-medium text-primary hover:underline transition-colors"
+                >
+                  {loreExpanded ? `${t("manufacturers.readLess")} ↑` : `${t("manufacturers.readMore")} ↓`}
+                </button>
             </div>
           )}
 
         </div>
+
+        {/* Lore détaillé — sections expandables */}
+        {loreExpanded && manufacturer.loreSections && manufacturer.loreSections.length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-6 space-y-8">
+            {manufacturer.loreSections.map((section, i) => (
+              <div key={i}>
+                <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold text-foreground">
+                  <span className="inline-block h-0.5 w-4 rounded bg-primary shrink-0" />
+                  {localize(section.title, i18n.language)}
+                </h3>
+                <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+                  {localize(section.content, i18n.language)
+                    .split('\n')
+                    .filter(line => line.trim() !== '')
+                    .map((line, j) => (
+                      <p key={j}>{line}</p>
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Chronologie */}
         {(manufacturer.timeline ?? []).length > 0 && (
@@ -238,7 +280,6 @@ const ManufacturerDetail = () => {
               {t("manufacturers.timeline")}
             </h2>
             <div className="relative">
-              {/* Fondu gauche */}
               {scrollState.left && (
                 <div className="absolute left-0 top-0 bottom-0 z-10 w-20 bg-gradient-to-r from-card to-transparent">
                   <button
@@ -249,7 +290,6 @@ const ManufacturerDetail = () => {
                   </button>
                 </div>
               )}
-              {/* Fondu droit */}
               {scrollState.right && (
                 <div className="absolute right-0 top-0 bottom-0 z-10 w-20 bg-gradient-to-l from-card to-transparent">
                   <button
@@ -260,9 +300,8 @@ const ManufacturerDetail = () => {
                   </button>
                 </div>
               )}
-              <div ref={timelineRef} className="overflow-x-auto pb-2" onScroll={onTimelineScroll}>
+              <div ref={timelineRef} className="overflow-x-auto pb-2" onScroll={onTimelineScroll} style={{ scrollbarWidth: 'none' }}>
               <div className="relative flex gap-6 min-w-max">
-              {/* Trait horizontal aligné sur les points */}
               <div className="absolute left-0 right-0 top-[5px] h-px bg-border" />
                 {(manufacturer.timeline ?? [])
                   .slice()
@@ -271,7 +310,6 @@ const ManufacturerDetail = () => {
                     <Tooltip key={i} delayDuration={200}>
                       <TooltipTrigger asChild>
                         <div className="group relative flex flex-col cursor-default" style={{ minWidth: 160, maxWidth: 200 }}>
-                          {/* Point aligné à gauche sur la ligne */}
                           <div className="relative z-10 mb-3 h-[11px] w-[11px] shrink-0 rounded-full border-2 border-primary bg-card transition-colors group-hover:bg-primary" />
                           <span className="font-mono text-[11px] font-bold text-primary">{event.date}</span>
                           <span className="mt-1 text-xs font-semibold text-foreground leading-snug">{localize(event.title, i18n.language)}</span>
@@ -295,7 +333,6 @@ const ManufacturerDetail = () => {
             </div>
           </div>
         )}
-
 
         {/* Relations & partenariats */}
         {manufacturer.relations && manufacturer.relations.length > 0 && (
@@ -328,7 +365,6 @@ const ManufacturerDetail = () => {
               {t("manufacturers.sectionShips")}
             </h2>
             <div className="relative">
-              {/* Fondu gauche */}
               {shipsScroll.left && (
                 <div className="absolute left-0 top-0 bottom-0 z-10 w-20 bg-gradient-to-r from-background to-transparent">
                   <button
@@ -339,7 +375,6 @@ const ManufacturerDetail = () => {
                   </button>
                 </div>
               )}
-              {/* Fondu droit */}
               {shipsScroll.right && (
                 <div className="absolute right-0 top-0 bottom-0 z-10 w-20 bg-gradient-to-l from-background to-transparent">
                   <button
@@ -350,7 +385,7 @@ const ManufacturerDetail = () => {
                   </button>
                 </div>
               )}
-              <div ref={shipsRef} className="overflow-x-auto pb-2" onScroll={onShipsScroll}>
+              <div ref={shipsRef} className="overflow-x-auto pb-2" onScroll={onShipsScroll} style={{ scrollbarWidth: 'none' }}>
                 <div className="flex items-stretch gap-5 min-w-max">
                   {ships.map(ship => (
                     <div key={ship.id} className="w-64 shrink-0 [&>a]:h-full">
