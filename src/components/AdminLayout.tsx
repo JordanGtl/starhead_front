@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Newspaper, Users, ChevronRight, Shield, ArrowLeft, Tag, Radio, Swords, Building2, Menu, X, BookOpen, ScrollText, Rocket, BarChart2, UserCircle2 } from "lucide-react";
+import { Newspaper, Users, ChevronRight, Shield, ArrowLeft, Tag, Radio, Swords, Building2, Menu, X, BookOpen, ScrollText, Rocket, BarChart2, UserCircle2, BookMarked } from "lucide-react";
 
 const NAV_CATEGORIES = [
   {
@@ -12,7 +12,8 @@ const NAV_CATEGORIES = [
       { label: "Actualités",      path: "/admin/news",          icon: Newspaper },
       { label: "Utilisateurs",    path: "/admin/users",         icon: Users     },
       { label: "Versions du jeu", path: "/admin/game-versions", icon: Tag       },
-      { label: "Spectrum",        path: "/admin/spectrum",      icon: Radio     },
+      { label: "Spectrum",        path: "/admin/spectrum",      icon: Radio       },
+      { label: "Glossaire",       path: "/admin/glossary",      icon: BookMarked  },
     ],
   },
   {

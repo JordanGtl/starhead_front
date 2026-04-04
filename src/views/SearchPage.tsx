@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Rocket, Crosshair, MapPin, Car, Cpu, Building2, BookOpen, Users, ArrowRight, Loader2 } from "lucide-react";
+import { Search, Rocket, Crosshair, MapPin, Car, Cpu, Building2, Users, Target, ArrowRight, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { apiSearch, type SearchCategory, type SearchResult } from "@/data/search";
 import { useSEO } from "@/hooks/useSEO";
@@ -16,6 +16,7 @@ const categoryColors: Record<string, string> = {
   locations:     "bg-green-500/10 text-green-400 border-green-500/20",
   vehicles:      "bg-violet-500/10 text-violet-400 border-violet-500/20",
   manufacturers: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  missions:      "bg-orange-500/10 text-orange-400 border-orange-500/20",
   lore:          "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
   factions:      "bg-rose-500/10 text-rose-400 border-rose-500/20",
 };
@@ -77,7 +78,7 @@ const SearchPage = () => {
     { value: "locations",     label: t("nav.locations"),        icon: MapPin    },
     { value: "vehicles",      label: t("nav.vehicles"),         icon: Car       },
     { value: "manufacturers", label: t("nav.manufacturers"),    icon: Building2 },
-    { value: "lore",          label: t("nav.lore"),             icon: BookOpen  },
+    { value: "missions",      label: t("nav.missions"),         icon: Target    },
     { value: "factions",      label: t("nav.factions"),         icon: Users     },
   ];
 
@@ -88,7 +89,7 @@ const SearchPage = () => {
     if (category !== "all") params.cat = category;
     const qs = new URLSearchParams(params).toString();
     router.replace(qs ? `/search?${qs}` : "/search");
-  }, [query, category, setSearchParams]);
+  }, [query, category]);
 
   // Fetch all results avec debounce
   useEffect(() => {
@@ -137,9 +138,9 @@ const SearchPage = () => {
         <div className="container pb-2 pt-8">
           <div className="mb-1 flex items-center gap-2">
             <Search className="h-5 w-5 text-primary" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("search.title")}</span>
+            <span suppressHydrationWarning className="text-xs font-semibold uppercase tracking-widest text-primary">{t("search.title")}</span>
           </div>
-          <h1 className="font-display text-4xl font-bold text-foreground">{t("search.subtitle")}</h1>
+          <h1 suppressHydrationWarning className="font-display text-4xl font-bold text-foreground">{t("search.subtitle")}</h1>
         </div>
       </div>
 
@@ -153,6 +154,7 @@ const SearchPage = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("search.placeholder")}
+          suppressHydrationWarning
           autoFocus
           className="h-12 w-full rounded-lg border border-border bg-card pl-12 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
@@ -178,7 +180,7 @@ const SearchPage = () => {
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
-              {f.label}
+              <span suppressHydrationWarning>{f.label}</span>
               {query.trim().length >= 2 && (
                 <span className={`ml-1 rounded-full px-1.5 text-[10px] ${isActive ? "bg-primary/20" : "bg-secondary"}`}>
                   {count}
@@ -193,21 +195,21 @@ const SearchPage = () => {
       {!query || query.trim().length < 2 ? (
         <div className="py-20 text-center text-muted-foreground">
           <Search className="mx-auto mb-3 h-12 w-12 text-muted-foreground/30" />
-          <p>{t("search.startTyping")}</p>
+          <p suppressHydrationWarning>{t("search.startTyping")}</p>
         </div>
       ) : loading ? (
         <div className="py-20 text-center text-muted-foreground">
           <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-muted-foreground/50" />
-          <p className="text-sm">{t("search.searching", { defaultValue: "Recherche en cours…" })}</p>
+          <p suppressHydrationWarning className="text-sm">{t("search.searching", { defaultValue: "Recherche en cours…" })}</p>
         </div>
       ) : results.length === 0 ? (
         <div className="py-20 text-center text-muted-foreground">
-          <p>{t("search.noResults", { query })}</p>
-          <p className="mt-1 text-xs">{t("search.tryOtherTerms")}</p>
+          <p suppressHydrationWarning>{t("search.noResults", { query })}</p>
+          <p suppressHydrationWarning className="mt-1 text-xs">{t("search.tryOtherTerms")}</p>
         </div>
       ) : (
         <>
-          <p className="mb-4 text-sm text-muted-foreground">
+          <p suppressHydrationWarning className="mb-4 text-sm text-muted-foreground">
             {t("search.resultsFound", { count: results.length })}
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

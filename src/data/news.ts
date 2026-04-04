@@ -7,6 +7,7 @@ export function resolveThumbnail(thumbnail: string | null): string | null {
   return `${API_URL}${thumbnail}`;                              // chemin relatif → absolu
 }
 
+
 export interface NewsItem {
   id: number | null;
   title: string;

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslationJob } from '@/hooks/useTranslationJob';
 import { useRouter } from 'next/navigation';
 import {
   ScrollText, Search, RefreshCw, Loader2, ChevronLeft, ChevronRight,
@@ -97,8 +98,7 @@ function TranslationPanel({
   const [activeLocale, setActiveLocale] = useState('fr');
   const [editName, setEditName]         = useState('');
   const [editing, setEditing]           = useState(false);
-  const [saving, setSaving]             = useState(false);
-  const [generating, setGenerating]     = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const tr = bp.translations.find(t => t.locale === activeLocale);
 
@@ -124,19 +124,15 @@ function TranslationPanel({
     }
   };
 
-  const generate = async () => {
-    setGenerating(true);
-    try {
-      const t = await apiFetch<BpTranslation>(
-        `/api/admin/blueprints/${bp.id}/translate/${activeLocale}`,
-        { method: 'POST' }
-      );
-      const fresh = bp.translations.filter(x => x.locale !== activeLocale);
-      onUpdate({ ...bp, translations: [...fresh, t] });
-    } finally {
-      setGenerating(false);
-    }
-  };
+  const { translating: generating, start: startTranslation } = useTranslationJob({
+    onDone: async () => {
+      const fresh = await apiFetch<BpTranslation[]>(`/api/admin/blueprints/${bp.id}/translations`);
+      onUpdate({ ...bp, translations: fresh });
+    },
+    onError: () => {},
+  });
+
+  const generate = () => startTranslation(`/api/admin/blueprints/${bp.id}/translate/${activeLocale}`);
 
   const del = async () => {
     if (!confirm(`Supprimer la traduction "${activeLocale}" ?`)) return;

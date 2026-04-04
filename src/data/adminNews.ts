@@ -85,10 +85,6 @@ export interface NewsTranslation {
   updatedAt: string;
 }
 
-export async function generateNewsTranslation(rsiId: number, locale: string): Promise<NewsTranslation> {
-  return apiFetch<NewsTranslation>(`/api/admin/news/${rsiId}/translate/${locale}`, { method: 'POST' });
-}
-
 export async function fetchNewsTranslations(rsiId: number): Promise<NewsTranslation[]> {
   return apiFetch<NewsTranslation[]>(`/api/admin/news/${rsiId}/translations`);
 }

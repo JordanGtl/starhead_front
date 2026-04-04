@@ -60,6 +60,10 @@ export async function apiFetch<T>(path: string, options?: RequestInit, _retry = 
     throw new ApiError(res.status, message, body);
   }
 
+  if (res.status === 204 || res.headers.get('Content-Length') === '0') {
+    return undefined as T;
+  }
+
   return res.json() as Promise<T>;
 }
 

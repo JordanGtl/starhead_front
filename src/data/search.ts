@@ -4,10 +4,9 @@ import { locations } from "./locations";
 import { vehicles } from "./vehicles";
 import { components } from "./components";
 import { manufacturers, localize } from "./manufacturers";
-import { loreEntries } from "./lore";
 import { apiFetch } from "@/lib/api";
 
-export type SearchCategory = "all" | "ships" | "weapons" | "locations" | "vehicles" | "components" | "manufacturers" | "lore" | "factions";
+export type SearchCategory = "all" | "ships" | "weapons" | "locations" | "vehicles" | "components" | "manufacturers" | "missions" | "factions";
 
 export interface SearchResult {
   id: string;
@@ -116,19 +115,6 @@ export function globalSearch(query: string, category: SearchCategory = "all"): S
       description: localize(m.description, "fr"),
       link: `/manufacturers/${m.slug}`,
       meta: { Fondée: m.founded ?? "", Secteurs: (m.industry ?? []).map(i => localize(i, "fr")).join(", ") },
-    }));
-  }
-
-  if (category === "all" || category === "lore") {
-    loreEntries.filter(l =>
-      l.title.toLowerCase().includes(q) ||
-      l.summary.toLowerCase().includes(q) ||
-      l.category.toLowerCase().includes(q)
-    ).forEach(l => results.push({
-      id: String(l.id), name: l.title, category: "lore", categoryLabel: "Lore",
-      subtitle: l.category, description: l.summary,
-      link: `/lore`,
-      meta: { Catégorie: l.category, ...(l.date ? { Date: l.date } : {}) },
     }));
   }
 

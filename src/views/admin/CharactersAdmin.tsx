@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslationJob } from '@/hooks/useTranslationJob';
 import { useRouter } from 'next/navigation';
 import {
   UserCircle2, Search, RefreshCw, Loader2, Plus, Pencil, Trash2,
@@ -445,10 +446,9 @@ function TranslationEditor({
 }) {
   const [locale, setLocale]       = useState('fr');
   const [form, setForm]           = useState<TranslationForm>({ title: '', affiliation: '', description: '' });
-  const [saving, setSaving]       = useState(false);
-  const [translating, setTranslating] = useState(false);
-  const [deleting, setDeleting]   = useState<string | null>(null);
-  const [error, setError]         = useState<string | null>(null);
+  const [saving, setSaving]     = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [error, setError]       = useState<string | null>(null);
 
   useEffect(() => {
     const tr = translations.find(t => t.locale === locale);
@@ -475,21 +475,20 @@ function TranslationEditor({
     }
   };
 
-  const handleTranslate = async () => {
-    setTranslating(true);
-    setError(null);
-    try {
+  const { translating, start: startTranslation } = useTranslationJob({
+    onDone: async () => {
       const result = await apiFetch<CharacterTranslation>(
-        `/api/admin/characters/${characterId}/translate/${locale}`,
-        { method: 'POST' },
+        `/api/admin/characters/${characterId}/translations/${locale}`,
       );
       onUpdate(locale, result);
       setForm({ title: result.title ?? '', affiliation: result.affiliation ?? '', description: result.description ?? '' });
-    } catch (e: any) {
-      setError(e?.message ?? 'Erreur lors de la traduction');
-    } finally {
-      setTranslating(false);
-    }
+    },
+    onError: (err) => setError(err),
+  });
+
+  const handleTranslate = () => {
+    setError(null);
+    startTranslation(`/api/admin/characters/${characterId}/translate/${locale}`);
   };
 
   const handleDelete = async () => {

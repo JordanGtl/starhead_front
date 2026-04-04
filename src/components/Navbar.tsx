@@ -358,7 +358,7 @@ const Navbar = () => {
                   {LANGUAGES.map((lang) => (
                     <button
                       key={lang.code}
-                      onClick={() => { i18n.changeLanguage(lang.code); setLangOpen(false); }}
+                      onClick={() => { localStorage.setItem('starhead_lang', lang.code); i18n.changeLanguage(lang.code); setLangOpen(false); }}
                       className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors ${
                         i18n.language === lang.code
                           ? "bg-primary/5 text-primary"

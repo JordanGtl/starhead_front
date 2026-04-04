@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslationJob } from "@/hooks/useTranslationJob";
 import { useRouter } from "next/navigation";
 import {
   Radio, Search, RefreshCw, Trash2, ExternalLink,
@@ -83,12 +84,11 @@ const TranslationPanel = ({ item, onClose }: TranslationPanelProps) => {
   const [locale, setLocale]             = useState(AVAILABLE_LOCALES[0].code);
   const [translations, setTranslations] = useState<SpectrumTranslation[]>([]);
   const [loadingTr, setLoadingTr]       = useState(true);
-  const [saving, setSaving]             = useState(false);
-  const [deleting, setDeleting]         = useState(false);
-  const [generating, setGenerating]     = useState(false);
-  const [loadError, setLoadError]       = useState<string | null>(null);
-  const [msg, setMsg]                   = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [form, setForm]                 = useState({ title: "", excerpt: "", content: "" });
+  const [saving, setSaving]       = useState(false);
+  const [deleting, setDeleting]   = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [msg, setMsg]             = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [form, setForm]           = useState({ title: "", excerpt: "", content: "" });
 
   const loadTranslations = useCallback(() => {
     setLoadingTr(true);
@@ -112,30 +112,21 @@ const TranslationPanel = ({ item, onClose }: TranslationPanelProps) => {
 
   const currentTranslation = translations.find((tr) => tr.locale === locale);
 
-  const handleGenerate = async () => {
-    setGenerating(true);
-    setMsg(null);
-    try {
-      const generated = await apiFetch<SpectrumTranslation>(
-        `/api/admin/spectrum/${item.id}/translate/${locale}`,
-        { method: "POST" }
-      );
-      setTranslations((prev) => {
-        const next = prev.filter((tr) => tr.locale !== locale);
-        return [...next, generated].sort((a, b) => a.locale.localeCompare(b.locale));
-      });
-      setForm({
-        title:   generated.title   ?? "",
-        excerpt: generated.excerpt ?? "",
-        content: generated.content ?? "",
-      });
-      setMsg({ type: "ok", text: "Traduction Gemini générée et sauvegardée." });
-    } catch (e: any) {
-      setMsg({ type: "err", text: e?.message ?? "Erreur Gemini" });
-    } finally {
-      setGenerating(false);
+  const { translating: generating, start: startTranslation } = useTranslationJob({
+    onDone: async () => {
+      await loadTranslations();
+      setMsg({ type: "ok", text: "Traduction générée et sauvegardée." });
       setTimeout(() => setMsg(null), 4000);
-    }
+    },
+    onError: (err) => {
+      setMsg({ type: "err", text: err });
+      setTimeout(() => setMsg(null), 4000);
+    },
+  });
+
+  const handleGenerate = () => {
+    setMsg(null);
+    startTranslation(`/api/admin/spectrum/${item.id}/translate/${locale}`);
   };
 
   const handleSave = async () => {
@@ -221,7 +212,7 @@ const TranslationPanel = ({ item, onClose }: TranslationPanelProps) => {
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   : <Sparkles className="h-3.5 w-3.5" />
                 }
-                {generating ? "Génération…" : "Générer avec Gemini"}
+                {generating ? "Traduction en cours…" : "Générer"}
               </button>
             </div>
             <div className="flex flex-wrap gap-2">

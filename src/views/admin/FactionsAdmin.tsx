@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslationJob } from '@/hooks/useTranslationJob';
 import { useRouter } from 'next/navigation';
 import {
   Swords, Search, RefreshCw, Loader2, ChevronLeft, ChevronRight,
@@ -73,8 +74,7 @@ function TranslationPanel({ faction, onUpdate }: { faction: AdminFaction; onUpda
   const [editName, setEditName]         = useState('');
   const [editDesc, setEditDesc]         = useState('');
   const [editing, setEditing]           = useState(false);
-  const [saving, setSaving]             = useState(false);
-  const [generating, setGenerating]     = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const tr = getTranslation(faction, activeLocale);
 
@@ -101,16 +101,15 @@ function TranslationPanel({ faction, onUpdate }: { faction: AdminFaction; onUpda
     }
   };
 
-  const generate = async () => {
-    setGenerating(true);
-    try {
-      const t = await apiFetch<Translation>(`/api/admin/factions/${faction.id}/translate/${activeLocale}`, { method: 'POST' });
-      const fresh = faction.translations.filter(x => x.locale !== activeLocale);
-      onUpdate({ ...faction, translations: [...fresh, t] });
-    } finally {
-      setGenerating(false);
-    }
-  };
+  const { translating: generating, start: startTranslation } = useTranslationJob({
+    onDone: async () => {
+      const fresh = await apiFetch<Translation[]>(`/api/admin/factions/${faction.id}/translations`);
+      onUpdate({ ...faction, translations: fresh });
+    },
+    onError: () => {},
+  });
+
+  const generate = () => startTranslation(`/api/admin/factions/${faction.id}/translate/${activeLocale}`);
 
   const del = async () => {
     if (!confirm(`Supprimer la traduction "${activeLocale}" ?`)) return;
@@ -146,7 +145,7 @@ function TranslationPanel({ faction, onUpdate }: { faction: AdminFaction; onUpda
           <button
             onClick={generate}
             disabled={generating}
-            title="Générer avec Gemini"
+            title="Générer la traduction"
             className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-40"
           >
             {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}

@@ -1602,12 +1602,16 @@ i18n
     resources,
     fallbackLng: 'en',
     supportedLngs: ['fr', 'en'],
-    nonExplicitSupportedLngs: true, // fr-FR → fr, en-US → en
+    load: 'languageOnly',            // fr-FR → charge 'fr', en-US → charge 'en'
+    nonExplicitSupportedLngs: true,  // fr-FR → accepté si 'fr' est supporté
     interpolation: { escapeValue: false },
     detection: {
-      order: ['localStorage', 'navigator'],
-      caches: ['localStorage'],
-      lookupLocalStorage: 'starhead_lang',
+      // Aucune détection ni cache automatique : i18next démarre toujours en
+      // fallbackLng ('en') côté serveur ET client (pas de mismatch SSR).
+      // La langue réelle est lue et appliquée dans Providers.tsx (useEffect),
+      // qui gère lui-même l'écriture dans localStorage.
+      order: [],
+      caches: [],
     },
   });
 

@@ -39,6 +39,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8787505402344323"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body>
         <Providers>
           <div className="flex min-h-screen flex-col">

@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslationJob } from "@/hooks/useTranslationJob";
+
 import Link from "next/link";
 import AdminLayout from "@/components/AdminLayout";
 import {
@@ -11,7 +13,7 @@ import {
 import { useTranslation } from "react-i18next";
 import {
   fetchAdminNews, updateAdminNews, deleteAdminNews, syncAdminNewsContent, createAdminNews,
-  fetchNewsTranslations, upsertNewsTranslation, deleteNewsTranslation, generateNewsTranslation,
+  fetchNewsTranslations, upsertNewsTranslation, deleteNewsTranslation,
   type AdminNewsItem, type AdminNewsPayload, type NewsTranslation,
 } from "@/data/adminNews";
 import { resolveThumbnail } from "@/data/news";
@@ -50,9 +52,11 @@ const StatusBadge = ({ ok, label }: { ok: boolean; label: string }) => (
 interface TranslationPanelProps {
   item: AdminNewsItem;
   onClose: () => void;
+  onTranslationStart?: () => void;
+  onTranslationDone?: () => void;
 }
 
-const TranslationPanel = ({ item, onClose }: TranslationPanelProps) => {
+const TranslationPanel = ({ item, onClose, onTranslationStart, onTranslationDone }: TranslationPanelProps) => {
   const { t } = useTranslation();
   const [locale, setLocale]             = useState(AVAILABLE_LOCALES[0].code);
   const [translations, setTranslations] = useState<NewsTranslation[]>([]);
@@ -61,8 +65,7 @@ const TranslationPanel = ({ item, onClose }: TranslationPanelProps) => {
   const [deleting, setDeleting]         = useState(false);
   const [msg, setMsg]                   = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  const [loadError, setLoadError]   = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", description: "", content: "" });
 
   // Charger les traductions existantes
@@ -90,28 +93,25 @@ const TranslationPanel = ({ item, onClose }: TranslationPanelProps) => {
 
   const currentTranslation = translations.find((tr) => tr.locale === locale);
 
-  const handleGenerate = async () => {
-    if (!item.id) return;
-    setGenerating(true);
-    setMsg(null);
-    try {
-      const generated = await generateNewsTranslation(item.id, locale);
-      setTranslations((prev) => {
-        const next = prev.filter((tr) => tr.locale !== locale);
-        return [...next, generated].sort((a, b) => a.locale.localeCompare(b.locale));
-      });
-      setForm({
-        title:       generated.title       ?? "",
-        description: generated.description ?? "",
-        content:     generated.content     ?? "",
-      });
-      setMsg({ type: "ok", text: "Traduction Gemini générée et sauvegardée." });
-    } catch (e: any) {
-      setMsg({ type: "err", text: e?.message ?? "Erreur Gemini" });
-    } finally {
-      setGenerating(false);
+  const { translating: generating, start: startTranslation } = useTranslationJob({
+    onDone: async () => {
+      onTranslationStart?.();
+      onTranslationDone?.();
+      await loadTranslations();
+      setMsg({ type: "ok", text: "Traduction générée et sauvegardée." });
       setTimeout(() => setMsg(null), 4000);
-    }
+    },
+    onError: (err) => {
+      onTranslationDone?.();
+      setMsg({ type: "err", text: err });
+      setTimeout(() => setMsg(null), 4000);
+    },
+  });
+
+  const handleGenerate = () => {
+    if (!item.id) return;
+    setMsg(null);
+    startTranslation(`/api/admin/news/${item.id}/translate/${locale}`);
   };
 
   const handleSave = async () => {
@@ -191,7 +191,7 @@ const TranslationPanel = ({ item, onClose }: TranslationPanelProps) => {
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   : <Sparkles className="h-3.5 w-3.5" />
                 }
-                {generating ? "Génération…" : "Générer avec Gemini"}
+                {generating ? "Traduction en cours…" : "Générer"}
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -969,6 +969,8 @@ const NewsAdmin = () => {
         <TranslationPanel
           item={translateItem}
           onClose={() => setTranslateItem(null)}
+          onTranslationStart={() => {}}
+          onTranslationDone={() => { load(page, q, category, type); }}
         />
       )}
         </div>
