@@ -109,11 +109,11 @@ function shortVersion(label: string): string {
   return match ? match[1] : label;
 }
 
-/** Détermine le canal : "LIVE" si isLive, sinon "PTU" */
-function versionChannel(label: string, isLive: boolean): "LIVE" | "PTU" {
+/** Détermine le canal d'une version par rapport à l'id de la version live */
+function versionChannel(id: number, isLive: boolean, liveId: number | null): "LIVE" | "PTU" | "OLD" {
   if (isLive) return "LIVE";
-  if (label.toUpperCase().includes("LIVE")) return "LIVE";
-  return "PTU";
+  if (liveId === null) return "PTU";
+  return id > liveId ? "PTU" : "OLD";
 }
 
 const toolItems = [
@@ -139,6 +139,7 @@ const Navbar = () => {
   const { user, isAuthenticated, logout }     = useAuth();
   const { versions, selectedVersion, setSelectedVersion } = useVersion();
   const { t, i18n } = useTranslation();
+  const liveId = versions.find(v => v.isLive)?.id ?? null;
 
   // SSR renders with 'en' (no browser detector), client detects the real language.
   // Using a mounted flag avoids structural SVG mismatches between server and client.
@@ -277,15 +278,18 @@ const Navbar = () => {
                   <span className="font-semibold text-foreground">
                     {shortVersion(selectedVersion?.label ?? "")}
                   </span>
-                  {selectedVersion && (
-                    <span className={`rounded-sm px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                      versionChannel(selectedVersion.label, selectedVersion.isLive) === "LIVE"
-                        ? "bg-emerald-500/20 text-emerald-400"
-                        : "bg-amber-500/20 text-amber-400"
-                    }`}>
-                      {versionChannel(selectedVersion.label, selectedVersion.isLive)}
-                    </span>
-                  )}
+                  {selectedVersion && (() => {
+                    const ch = versionChannel(selectedVersion.id, selectedVersion.isLive, liveId);
+                    return (
+                      <span className={`rounded-sm px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                        ch === "LIVE" ? "bg-emerald-500/20 text-emerald-400"
+                        : ch === "PTU" ? "bg-amber-500/20 text-amber-400"
+                        : "bg-muted/60 text-muted-foreground"
+                      }`}>
+                        {ch}
+                      </span>
+                    );
+                  })()}
                   <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${versionOpen ? "rotate-180" : ""}`} />
                 </span>
               </button>
@@ -295,10 +299,11 @@ const Navbar = () => {
                   <p className="border-b border-border/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     {t("nav.versionPickerTitle")}
                   </p>
-                  {versions.filter(v => versionChannel(v.label, v.isLive) === "LIVE").length > 0 && (
+                  {/* PTU — versions au-dessus du live */}
+                  {versions.filter(v => versionChannel(v.id, v.isLive, liveId) === "PTU").length > 0 && (
                     <>
-                      <p className="px-3 pb-1 pt-2 text-[9px] font-bold uppercase tracking-widest text-emerald-400/70">Live</p>
-                      {versions.filter(v => versionChannel(v.label, v.isLive) === "LIVE").map(v => (
+                      <p className="px-3 pb-1 pt-2 text-[9px] font-bold uppercase tracking-widest text-amber-400/70">PTU</p>
+                      {versions.filter(v => versionChannel(v.id, v.isLive, liveId) === "PTU").map(v => (
                         <button
                           key={v.id}
                           onClick={() => { setSelectedVersion(v); setVersionOpen(false); }}
@@ -312,15 +317,34 @@ const Navbar = () => {
                       ))}
                     </>
                   )}
-                  {versions.filter(v => versionChannel(v.label, v.isLive) !== "LIVE").length > 0 && (
+                  {/* LIVE */}
+                  {versions.filter(v => versionChannel(v.id, v.isLive, liveId) === "LIVE").length > 0 && (
                     <>
-                      <p className="border-t border-border/30 px-3 pb-1 pt-2 text-[9px] font-bold uppercase tracking-widest text-amber-400/70">PTU</p>
-                      {versions.filter(v => versionChannel(v.label, v.isLive) !== "LIVE").map(v => (
+                      <p className="border-t border-border/30 px-3 pb-1 pt-2 text-[9px] font-bold uppercase tracking-widest text-emerald-400/70">Live</p>
+                      {versions.filter(v => versionChannel(v.id, v.isLive, liveId) === "LIVE").map(v => (
                         <button
                           key={v.id}
                           onClick={() => { setSelectedVersion(v); setVersionOpen(false); }}
                           className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
                             selectedVersion?.id === v.id ? "bg-primary/5 text-primary" : "text-foreground hover:bg-secondary/40"
+                          }`}
+                        >
+                          <span className="flex-1 font-mono text-xs">{v.label}</span>
+                          {selectedVersion?.id === v.id && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {/* Anciennes versions — versions en-dessous du live */}
+                  {versions.filter(v => versionChannel(v.id, v.isLive, liveId) === "OLD").length > 0 && (
+                    <>
+                      <p className="border-t border-border/30 px-3 pb-1 pt-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Anciennes</p>
+                      {versions.filter(v => versionChannel(v.id, v.isLive, liveId) === "OLD").map(v => (
+                        <button
+                          key={v.id}
+                          onClick={() => { setSelectedVersion(v); setVersionOpen(false); }}
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                            selectedVersion?.id === v.id ? "bg-primary/5 text-primary" : "text-muted-foreground/60 hover:bg-secondary/40 hover:text-foreground"
                           }`}
                         >
                           <span className="flex-1 font-mono text-xs">{v.label}</span>

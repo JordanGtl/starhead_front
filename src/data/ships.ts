@@ -3,9 +3,11 @@ import { apiFetch } from '@/lib/api';
 export interface Ship {
   id: number;
   name: string;
+  internalName?: string;
   manufacturer: string;
   role: string;
   size: string;
+  movementClass?: string | null;
   crew: string;          // calculé depuis minCrew/maxCrew
   minCrew: number | null;
   maxCrew: number | null;
@@ -15,6 +17,10 @@ export interface Ship {
   status: "Flight Ready" | "In Concept" | "In Production";
   description: string | null;
   image: string | null;
+  // dimensions réelles (liste + détail)
+  sizeX?: number | null;   // longueur (m)
+  sizeY?: number | null;   // largeur  (m)
+  sizeZ?: number | null;   // hauteur  (m)
   // détails (ship:read)
   lore?: string | null;
   lengthM?: number | null;

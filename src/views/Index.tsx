@@ -29,7 +29,7 @@ const Index = () => {
   const [stats, setStats] = useState<DbStats | null>(null);
 
   useEffect(() => {
-    fetchSpectrumPosts({ pagesize: 3, locale: i18n.language }).then(r => setSpectrumPosts(r.items)).catch(() => {});
+    fetchSpectrumPosts({ pagesize: 4, locale: i18n.language }).then(r => setSpectrumPosts(r.items)).catch(() => {});
     fetchNews({ pagesize: 3, locale: i18n.language }).then(r => setNewsItems(r.items)).catch(() => {});
     apiFetch<DbStats>('/api/stats').then(setStats).catch(() => {});
   }, [i18n.language]);

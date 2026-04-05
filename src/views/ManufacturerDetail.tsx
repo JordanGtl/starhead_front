@@ -124,7 +124,7 @@ const ManufacturerDetail = () => {
         subtitle={manufacturer.headquarters ?? undefined}
       />
 
-      <div className="container py-8 space-y-6">
+      <div className="container pt-0 pb-0 space-y-6">
 
         {/* Bouton sources au-dessus du bloc */}
         {manufacturer.sources && manufacturer.sources.length > 0 && (
