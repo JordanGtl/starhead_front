@@ -1,8 +1,8 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Rocket, Search, RefreshCw, Loader2, ChevronLeft, ChevronRight,
+  Rocket, Search, Plus, Loader2, ChevronLeft, ChevronRight,
   ChevronDown, ExternalLink, Users, Box, Ruler, Shield,
   Zap, Thermometer, Gauge, Crosshair, Fuel, Radio, Target,
   Upload, Trash2, ImageIcon, Eye, EyeOff,
@@ -552,14 +552,13 @@ const ShipsAdmin = () => {
                   : '…'}
               </p>
             </div>
-            <button
-              onClick={() => load()}
-              disabled={loading}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+            <Link
+              href="/admin/ships/new"
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Actualiser
-            </button>
+              <Plus className="h-4 w-4" />
+              Ajouter un vaisseau
+            </Link>
           </div>
         </div>
 
@@ -689,9 +688,8 @@ const ShipsAdmin = () => {
                     {data?.items.map(ship => {
                       const isOpen = expanded === ship.id;
                       return (
-                        <>
+                        <Fragment key={ship.id}>
                           <tr
-                            key={ship.id}
                             className="bg-card transition-colors hover:bg-secondary/20 cursor-pointer"
                             onClick={() => setExpanded(isOpen ? null : ship.id)}
                           >
@@ -756,9 +754,9 @@ const ShipsAdmin = () => {
                             </td>
                           </tr>
                           {isOpen && (
-                            <ExpandedRow key={`${ship.id}-expanded`} ship={ship} onImageChange={updateShipImage} />
+                            <ExpandedRow ship={ship} onImageChange={updateShipImage} />
                           )}
-                        </>
+                        </Fragment>
                       );
                     })}
                     {data?.items.length === 0 && (

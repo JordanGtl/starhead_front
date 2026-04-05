@@ -25,6 +25,7 @@ import { useVersion } from "@/contexts/VersionContext";
 import { useSEO } from "@/hooks/useSEO";
 import { useCraftingInventory, type SavedCraft, type SavedIngredient } from "@/hooks/useCraftingInventory";
 import { useCraftCategories, type CraftCategory } from "@/hooks/useCraftCategories";
+import { useUserFleet, type FleetEntry } from "@/hooks/useUserFleet";
 import { apiFetch, API_URL } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 
@@ -333,6 +334,7 @@ const Inventory = () => {
   } = useCraftCategories();
   const [tab, setTab] = useState<Tab>("ships");
   const { loadouts: shipLoadouts, loading: shipLoadoutsLoading, remove: removeShipLoadout } = useShipLoadouts();
+  const { fleet, loading: fleetLoading, remove: removeFleetEntry } = useUserFleet();
 
   // ── Ingredient enrichment ──
   const [enriched,  setEnriched]  = useState<Map<number, SavedIngredient[]>>(new Map());
@@ -554,7 +556,7 @@ const Inventory = () => {
 
   const tabs: { id: Tab; label: string; icon: React.ElementType; count?: number }[] = [
     { id: "crafts",     label: "Crafts à réaliser", icon: FlaskConical, count: crafts.length },
-    { id: "ships",      label: "Vaisseaux",          icon: Rocket,       count: shipLoadouts.length || undefined },
+    { id: "ships",      label: "Vaisseaux",          icon: Rocket,       count: (shipLoadouts.length + fleet.length) || undefined },
     { id: "components", label: "Composants",         icon: Cpu },
   ];
 
@@ -803,63 +805,146 @@ const Inventory = () => {
         )}
 
         {tab === "ships" && (
-          shipLoadoutsLoading ? (
+          (shipLoadoutsLoading || fleetLoading) ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : shipLoadouts.length === 0 ? (
-            <EmptyState
-              icon={Bookmark}
-              title="Aucune configuration sauvegardée"
-              subtitle="Utilisez le configurateur de vaisseau pour personnaliser et sauvegarder vos loadouts."
-              action={{ label: "Configurateur", href: "/ships/configure" }}
-            />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {shipLoadouts.map(l => (
-                <div key={l.id} className="relative flex flex-col overflow-hidden rounded-xl border border-border bg-card">
-                  {/* Image */}
-                  <div className="relative h-32 overflow-hidden bg-secondary/40">
-                    {l.shipDef.image ? (
-                      <img src={`${API_URL}${l.shipDef.image}`} alt={l.shipDef.internalName} className="h-full w-full object-cover opacity-60" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <Rocket className="h-10 w-10 text-muted-foreground/20" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+            <div className="space-y-8">
+              {/* Fleet manuel */}
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Ma flotte</h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{fleet.length} vaisseau{fleet.length !== 1 ? 'x' : ''}</p>
                   </div>
-
-                  {/* Contenu */}
-                  <div className="flex flex-1 flex-col gap-3 p-4">
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">{l.shipDef.internalName}</p>
-                      <h3 className="mt-0.5 font-display font-bold text-foreground">{l.name}</h3>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        {Object.keys(l.slots).length} modification{Object.keys(l.slots).length > 1 ? 's' : ''}
-                        {' · '}
-                        {new Date(l.savedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                      </p>
-                    </div>
-
-                    <div className="mt-auto flex gap-2">
-                      <Link
-                        href={`/ships/configure?ship=${l.shipDef.id}&c=${Object.entries(l.slots).map(([p, id]) => `${encodeURIComponent(p)}:${id ?? 0}`).join(',')}`}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
-                      >
-                        <SlidersHorizontal className="h-4 w-4" />
-                        Ouvrir
-                      </Link>
-                      <button
-                        onClick={() => removeShipLoadout(l.id)}
-                        className="rounded-lg border border-border px-3 py-2 text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
+                  <Link
+                    href="/inventory/add-ship"
+                    className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Ajouter un vaisseau
+                  </Link>
                 </div>
-              ))}
+                {fleet.length === 0 ? (
+                  <EmptyState
+                    icon={Rocket}
+                    title="Aucun vaisseau dans la flotte"
+                    subtitle="Ajoutez vos vaisseaux actuels, même ceux qui ne sont pas encore en jeu."
+                    action={{ label: "Ajouter un vaisseau", href: "/inventory/add-ship" }}
+                  />
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {fleet.map((entry: FleetEntry) => (
+                      <div key={entry.id} className="relative flex flex-col overflow-hidden rounded-xl border border-border bg-card">
+                        <div className="relative h-28 overflow-hidden bg-secondary/40">
+                          {entry.shipDef?.image ? (
+                            <img src={`${API_URL}${entry.shipDef.image}`} alt={entry.shipDef.name} className="h-full w-full object-cover opacity-60" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                              <Rocket className="h-10 w-10 text-muted-foreground/20" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+                        </div>
+                        <div className="flex flex-1 flex-col gap-3 p-4">
+                          <div>
+                            {entry.shipDef && (
+                              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                                {entry.shipDef.manufacturer ?? entry.shipDef.name}
+                              </p>
+                            )}
+                            <h3 className="mt-0.5 font-display font-bold text-foreground">
+                              {entry.customName ?? entry.shipDef?.name ?? '—'}
+                            </h3>
+                            {entry.notes && (
+                              <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">{entry.notes}</p>
+                            )}
+                            <p className="mt-1 text-[11px] text-muted-foreground/50">
+                              {new Date(entry.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          </div>
+                          <div className="mt-auto flex gap-2">
+                            {entry.shipDef && (
+                              <Link
+                                href={`/ships/${entry.shipDef.id}`}
+                                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                              >
+                                Fiche vaisseau
+                              </Link>
+                            )}
+                            <button
+                              onClick={() => removeFleetEntry(entry.id)}
+                              className="rounded-lg border border-border px-3 py-2 text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Loadouts configurateur */}
+              <div>
+                <div className="mb-4">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Loadouts sauvegardés</h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{shipLoadouts.length} configuration{shipLoadouts.length !== 1 ? 's' : ''}</p>
+                </div>
+                {shipLoadouts.length === 0 ? (
+                  <EmptyState
+                    icon={Bookmark}
+                    title="Aucune configuration sauvegardée"
+                    subtitle="Utilisez le configurateur de vaisseau pour personnaliser et sauvegarder vos loadouts."
+                    action={{ label: "Configurateur", href: "/ships/configure" }}
+                  />
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {shipLoadouts.map(l => (
+                      <div key={l.id} className="relative flex flex-col overflow-hidden rounded-xl border border-border bg-card">
+                        <div className="relative h-32 overflow-hidden bg-secondary/40">
+                          {l.shipDef.image ? (
+                            <img src={`${API_URL}${l.shipDef.image}`} alt={l.shipDef.internalName} className="h-full w-full object-cover opacity-60" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                              <Rocket className="h-10 w-10 text-muted-foreground/20" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+                        </div>
+                        <div className="flex flex-1 flex-col gap-3 p-4">
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">{l.shipDef.internalName}</p>
+                            <h3 className="mt-0.5 font-display font-bold text-foreground">{l.name}</h3>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {Object.keys(l.slots).length} modification{Object.keys(l.slots).length > 1 ? 's' : ''}
+                              {' · '}
+                              {new Date(l.savedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                            </p>
+                          </div>
+                          <div className="mt-auto flex gap-2">
+                            <Link
+                              href={`/ships/configure?ship=${l.shipDef.id}&c=${Object.entries(l.slots).map(([p, id]) => `${encodeURIComponent(p)}:${id ?? 0}`).join(',')}`}
+                              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+                            >
+                              <SlidersHorizontal className="h-4 w-4" />
+                              Ouvrir
+                            </Link>
+                            <button
+                              onClick={() => removeShipLoadout(l.id)}
+                              className="rounded-lg border border-border px-3 py-2 text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )
         )}

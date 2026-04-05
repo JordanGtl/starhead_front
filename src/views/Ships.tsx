@@ -36,7 +36,7 @@ const Ships = () => {
   const filtered = useMemo(() => {
     let result = allShips.filter((s) => {
       const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.manufacturer.toLowerCase().includes(search.toLowerCase());
+        (s.manufacturer ?? '').toLowerCase().includes(search.toLowerCase());
       const matchMfr = !selectedManufacturer || s.manufacturer === selectedManufacturer;
       const matchRole = !selectedRole || s.role === selectedRole;
       const matchSize = !selectedSize || s.size === selectedSize;
