@@ -218,6 +218,10 @@ const resources = {
         empty: 'Vide',
         taille: 'Taille',
       },
+      vehicleDetail: {
+        notFound: 'Véhicule introuvable',
+        backToVehicles: 'Retour aux véhicules',
+      },
       shipCompare: {
         title: 'Comparateur',
         description: "Comparez jusqu'à {{max}} vaisseaux côte à côte",
@@ -372,6 +376,9 @@ const resources = {
         armed: 'Armé',
         armedFilter: 'Armement',
         armedOnly: 'Armés uniquement',
+        statsVehicles: 'Véhicules',
+        statsManufacturers: 'Fabricants',
+        statsTypes: 'Types',
       },
       locations: {
         title: 'Lieux',
@@ -1012,6 +1019,10 @@ const resources = {
         empty: 'Empty',
         taille: 'Size',
       },
+      vehicleDetail: {
+        notFound: 'Vehicle not found',
+        backToVehicles: 'Back to vehicles',
+      },
       shipCompare: {
         title: 'Comparator',
         description: 'Compare up to {{max}} ships side by side',
@@ -1166,6 +1177,9 @@ const resources = {
         armed: 'Armed',
         armedFilter: 'Armament',
         armedOnly: 'Armed only',
+        statsVehicles: 'Vehicles',
+        statsManufacturers: 'Manufacturers',
+        statsTypes: 'Types',
       },
       locations: {
         title: 'Locations',
