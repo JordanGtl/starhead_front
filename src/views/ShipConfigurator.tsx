@@ -27,6 +27,8 @@ interface SlotStats {
   qdSpeed:      number | null;
   qdSpoolUp:    number | null;
   weaponDps:    number | null;
+  emSignature:  number | null;
+  irSignature:  number | null;
 }
 
 interface ConfigSlot {
@@ -56,6 +58,7 @@ interface ShipDetail {
   role:         string | null;
   size:         string | null;
   image:        string | null;
+  crossSection: number | null;
   loadout: Array<{
     port:         string;
     itemId:       number | null;
@@ -89,11 +92,11 @@ interface ItemDetail {
   id:           number;
   name:         string | null;
   health:       number | null;
-  powerPlant?:  { powerOutput: number | null } | null;
-  cooler?:      { powerDraw: number | null } | null;
+  powerPlant?:  { powerOutput: number | null; emSignature: number | null } | null;
+  cooler?:      { powerDraw: number | null; coolingRate: number | null; emSignature: number | null; irSignature: number | null } | null;
   shield?:      { maxShieldHealth: number | null; maxShieldRegen: number | null } | null;
-  quantumDrive?:{ driveSpeed: number | null; spoolUpTime: number | null } | null;
-  shipWeapon?:  { ammoDamage: any[] | null; fireModes: any[] | null } | null;
+  quantumDrive?:{ driveSpeed: number | null; spoolUpTime: number | null; emSignature: number | null } | null;
+  shipWeapon?:  { ammoDamage: any[] | null; fireModes: any[] | null; emSignature: number | null } | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -128,6 +131,13 @@ function extractItemStats(detail: ItemDetail): SlotStats {
     const rof = (fm?.fireRate ?? fm?.rpm ?? fm?.rateOfFire ?? 0) / 60;
     if (dmg > 0 && rof > 0) weaponDps = Math.round(dmg * rof * 10) / 10;
   }
+  const emSig =
+    detail.powerPlant?.emSignature ??
+    detail.cooler?.emSignature ??
+    detail.quantumDrive?.emSignature ??
+    detail.shipWeapon?.emSignature ??
+    null;
+
   return {
     health:       detail.health ?? null,
     powerOutput:  detail.powerPlant?.powerOutput ?? null,
@@ -137,6 +147,8 @@ function extractItemStats(detail: ItemDetail): SlotStats {
     qdSpeed:      qd?.driveSpeed != null ? Math.round(qd.driveSpeed / 10_000) / 100 : null,
     qdSpoolUp:    qd?.spoolUpTime ?? null,
     weaponDps,
+    emSignature:  emSig,
+    irSignature:  detail.cooler?.irSignature ?? null,
   };
 }
 
@@ -298,6 +310,307 @@ function StatsPanel({ slots }: { slots: Record<string, ConfigSlot> }) {
     </div>
   );
 }
+
+// ─── Energy MFD Panel ────────────────────────────────────────────────────────
+
+/** Format a signature value: > 1 000 → "1.2k", > 1 000 000 → "1.2M" */
+function fmtSig(v: number | null): string {
+  if (v == null) return '—';
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
+  if (v >= 1_000)     return (v / 1_000).toFixed(1) + 'k';
+  return v.toFixed(0);
+}
+
+// ── power categories ──────────────────────────────────────────────────────────
+
+interface EnergyCat {
+  key:   string;
+  label: string;
+  icon:  React.ElementType;
+  color: string;
+  types: string[];
+}
+
+const ENERGY_CATS: EnergyCat[] = [
+  { key: 'weapons',  label: 'WPN',  icon: Crosshair,   color: '#ef4444', types: ['WeaponGun', 'MissileLauncher', 'Turret']    },
+  { key: 'shields',  label: 'SHD',  icon: Shield,      color: '#3b82f6', types: ['Shield']                                     },
+  { key: 'defense',  label: 'DEF',  icon: Target,      color: '#f97316', types: ['WeaponDefensive']                            },
+  { key: 'qd',       label: 'QD',   icon: Gauge,       color: '#a855f7', types: ['QuantumDrive']                               },
+  { key: 'engines',  label: 'ENG',  icon: Rocket,      color: '#f59e0b', types: ['FuelTank', 'FuelIntake', 'QuantumFuelTank']  },
+  { key: 'sensors',  label: 'SEN',  icon: Radio,       color: '#10b981', types: ['Radar']                                      },
+  { key: 'systems',  label: 'SYS',  icon: Heart,       color: '#ec4899', types: []                                             },
+  { key: 'coolers',  label: 'COOL', icon: Thermometer, color: '#06b6d4', types: ['Cooler']                                     },
+];
+
+type EnergyCatKey = 'weapons' | 'shields' | 'defense' | 'qd' | 'engines' | 'sensors' | 'systems' | 'coolers';
+type AllocMap     = Record<EnergyCatKey, number>;
+
+const ZERO_ALLOC: AllocMap = {
+  weapons: 0, shields: 0, defense: 0, qd: 0, engines: 0, sensors: 0, systems: 0, coolers: 0,
+};
+
+interface PowerProfile { output: number; alloc: AllocMap; }
+
+const MAX_ROWS = 10;
+
+function buildInitProfile(maxSeg: number, slotValues: ConfigSlot[]): PowerProfile {
+  if (maxSeg === 0) return { output: 0, alloc: { ...ZERO_ALLOC } };
+  const active = ENERGY_CATS.filter(c =>
+    c.types.length === 0 || slotValues.some(s => c.types.includes(s.type))
+  );
+  const per = Math.floor(maxSeg / Math.max(1, active.length));
+  const rem = maxSeg - per * active.length;
+  const alloc = { ...ZERO_ALLOC };
+  active.forEach((c, i) => { alloc[c.key as EnergyCatKey] = per + (i < rem ? 1 : 0); });
+  return { output: maxSeg, alloc };
+}
+
+function EnergyMFDPanel({
+  slots,
+  crossSection,
+}: {
+  slots:        Record<string, ConfigSlot>;
+  crossSection: number | null;
+}) {
+  const { t } = useTranslation();
+  const slotValues = useMemo(() => Object.values(slots), [slots]);
+
+  const maxSegments = useMemo(() =>
+    slotValues.reduce<number>((acc, s) =>
+      s.type === 'PowerPlant' && s.stats?.powerOutput != null ? acc + s.stats.powerOutput : acc
+    , 0),
+  [slotValues]);
+
+  const [mode, setMode] = useState<'scm' | 'nav'>('scm');
+  const [scm,  setScm]  = useState<PowerProfile>(() => buildInitProfile(maxSegments, slotValues));
+  const [nav,  setNav]  = useState<PowerProfile>(() => buildInitProfile(maxSegments, slotValues));
+  const prevMax = useRef(maxSegments);
+
+  useEffect(() => {
+    if (maxSegments === prevMax.current) return;
+    prevMax.current = maxSegments;
+    setScm(buildInitProfile(maxSegments, slotValues));
+    setNav(buildInitProfile(maxSegments, slotValues));
+  }, [maxSegments, slotValues]);
+
+  const profile    = mode === 'scm' ? scm : nav;
+  const setProfile = mode === 'scm' ? setScm : setNav;
+
+  const allocTotal = useMemo(
+    () => Object.values(profile.alloc).reduce((a, b) => a + b, 0),
+    [profile.alloc],
+  );
+  const consumePct = profile.output > 0
+    ? Math.min(999, Math.round((allocTotal / profile.output) * 100))
+    : 0;
+
+  // Signatures
+  const sumSig = (fn: (s: ConfigSlot) => number | null | undefined): number | null =>
+    slotValues.reduce<number | null>((acc, s) => {
+      const v = fn(s); return v != null ? (acc ?? 0) + v : acc;
+    }, null);
+  const totalEM = sumSig(s => s.stats?.emSignature);
+  const totalIR = sumSig(s => s.stats?.irSignature);
+
+  // Visual cells
+  const rowCount  = maxSegments > 0 ? Math.min(maxSegments, MAX_ROWS) : MAX_ROWS;
+  const segPerRow = maxSegments > 0 ? maxSegments / rowCount : 1;
+
+  const setAlloc = (key: EnergyCatKey, targetSeg: number) => {
+    const others  = allocTotal - profile.alloc[key];
+    const clamped = Math.max(0, Math.min(targetSeg, profile.output - others));
+    setProfile(p => ({ ...p, alloc: { ...p.alloc, [key]: clamped } }));
+  };
+
+  const setOutput = (val: number) => {
+    setProfile(p => {
+      if (val >= allocTotal) return { ...p, output: val };
+      const factor   = val / allocTotal;
+      const newAlloc = Object.fromEntries(
+        Object.entries(p.alloc).map(([k, v]) => [k, Math.floor(v * factor)])
+      ) as AllocMap;
+      return { output: val, alloc: newAlloc };
+    });
+  };
+
+  if (maxSegments === 0) return null;
+
+  const A = 'rgba(255,160,64,';
+
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: `${A}0.20)`, background: 'hsl(var(--card))' }}>
+
+      {/* Header */}
+      <div className="px-4 py-2 flex items-center gap-2"
+        style={{ background: `${A}0.07)`, borderBottom: `1px solid ${A}0.14)` }}>
+        <span className="text-[10px] font-bold" style={{ color: `${A}0.50)` }}>〉</span>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: `${A}0.75)` }}>
+          {t('configurator.powerManagement')}
+        </p>
+        <div className="flex-1 h-px" style={{ background: `linear-gradient(to right, ${A}0.30), transparent)` }} />
+      </div>
+
+      {/* Signatures inline */}
+      {(totalIR != null || totalEM != null || crossSection != null) && (
+        <div className="flex items-center justify-around px-4 py-2"
+          style={{ borderBottom: `1px solid ${A}0.10)` }}>
+          {totalIR != null && (
+            <div className="flex items-center gap-1">
+              <Thermometer className="h-3 w-3 shrink-0" style={{ color: '#ff7b00' }} />
+              <span className="font-mono text-[11px] font-bold" style={{ color: '#ff7b00' }}>{fmtSig(totalIR)}</span>
+            </div>
+          )}
+          {totalEM != null && (
+            <div className="flex items-center gap-1">
+              <Zap className="h-3 w-3 shrink-0" style={{ color: '#00d8ff' }} />
+              <span className="font-mono text-[11px] font-bold" style={{ color: '#00d8ff' }}>{fmtSig(totalEM)}</span>
+            </div>
+          )}
+          {crossSection != null && (
+            <div className="flex items-center gap-1">
+              <svg width="11" height="11" viewBox="0 0 12 12" className="shrink-0">
+                <path d="M6 1L11 6L6 11L1 6Z" fill="none" stroke="#a3e635" strokeWidth="1.5"/>
+              </svg>
+              <span className="font-mono text-[11px] font-bold" style={{ color: '#a3e635' }}>{fmtSig(crossSection)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* OUTPUT + CONSUMPTION */}
+      <div className="px-4 pt-3 pb-2 space-y-2">
+        {/* OUTPUT */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0 w-24">
+            <div className="flex h-5 w-5 items-center justify-center rounded border" style={{ borderColor: `${A}0.40)` }}>
+              <Zap className="h-3 w-3" style={{ color: '#ffa040' }} />
+            </div>
+            <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: `${A}0.70)` }}>
+              OUTPUT
+            </span>
+          </div>
+          <input
+            type="range" min={0} max={maxSegments} step={1}
+            value={profile.output}
+            onChange={e => setOutput(Number(e.target.value))}
+            className="flex-1 cursor-pointer"
+            style={{ accentColor: '#ffa040', height: '4px' }}
+          />
+          <span className="font-mono text-xs font-bold shrink-0 w-14 text-right" style={{ color: '#ffa040' }}>
+            {profile.output}
+            <span className="text-muted-foreground/50 font-normal"> /{maxSegments}</span>
+          </span>
+        </div>
+
+        {/* CONSUMPTION */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0 w-24">
+            <div className="flex h-5 w-5 items-center justify-center rounded border" style={{ borderColor: `${A}0.40)` }}>
+              <Thermometer className="h-3 w-3" style={{ color: '#ffa040' }} />
+            </div>
+            <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: `${A}0.70)` }}>
+              CONS.
+            </span>
+          </div>
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+            <div className="h-full rounded-full transition-all duration-150"
+              style={{
+                width: `${Math.min(100, consumePct)}%`,
+                background: consumePct > 100 ? '#ef4444' : consumePct > 80 ? '#ffa040' : '#22c55e',
+              }}
+            />
+          </div>
+          <span className="font-mono text-xs font-bold shrink-0 w-14 text-right"
+            style={{ color: consumePct > 100 ? '#ef4444' : consumePct > 80 ? '#ffa040' : '#22c55e' }}>
+            {consumePct}%
+          </span>
+        </div>
+      </div>
+
+      {/* Equalizer */}
+      <div className="px-3 pb-1">
+        <div className="flex items-end justify-between">
+          {ENERGY_CATS.map(cat => {
+            const key            = cat.key as EnergyCatKey;
+            const allocated      = profile.alloc[key];
+            const filledRows     = Math.round((allocated / maxSegments) * rowCount);
+            // Budget réel disponible pour cette catégorie = output - ce que les autres consomment
+            const remainBudget   = Math.max(0, profile.output - (allocTotal - allocated));
+            // Nombre max de cases atteignables (remplies + budget restant)
+            const maxReachRows   = Math.min(rowCount, Math.round(((allocated + remainBudget) / maxSegments) * rowCount));
+            const hasComp        = cat.types.length === 0 || slotValues.some(s => cat.types.includes(s.type));
+
+            return (
+              <div key={cat.key} className="flex flex-col items-center">
+                {/* Cells — flex-col-reverse so index 0 = bottom */}
+                <div className="flex flex-col-reverse" style={{ gap: '2px' }}>
+                  {Array.from({ length: rowCount }).map((_, rowIdx) => {
+                    const targetSeg = Math.round((rowIdx + 1) * segPerRow);
+                    const prevSeg   = rowIdx > 0 ? Math.round(rowIdx * segPerRow) : 0;
+                    const isFilled  = rowIdx < filledRows;
+                    // Clic sur une case remplie → descend d'un cran (prevSeg)
+                    // Clic sur une case vide → monte à ce niveau (capped par budget dans setAlloc)
+                    const isDisabled = !hasComp || (!isFilled && rowIdx >= maxReachRows);
+                    return (
+                      <button
+                        key={rowIdx}
+                        title={`${targetSeg} seg`}
+                        disabled={isDisabled}
+                        onClick={() => setAlloc(key, isFilled ? prevSeg : targetSeg)}
+                        style={{
+                          width: '18px', height: '6px',
+                          borderRadius: '2px',
+                          background: isFilled
+                            ? cat.color
+                            : rowIdx < maxReachRows
+                            ? 'rgba(255,255,255,0.10)'
+                            : 'rgba(255,255,255,0.04)',
+                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                          opacity: hasComp ? 1 : 0.25,
+                          transition: 'background 0.1s',
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Allocation badge */}
+                <div style={{ height: '18px' }} className="flex items-center justify-center mt-0.5">
+                  {allocated > 0 && (
+                    <span className="text-[9px] font-bold rounded-sm px-1 leading-none py-0.5"
+                      style={{ color: cat.color, background: `${cat.color}28` }}>
+                      {allocated}
+                    </span>
+                  )}
+                </div>
+
+                {/* Icon */}
+                <cat.icon className="h-3.5 w-3.5"
+                  style={{ color: hasComp ? `${cat.color}cc` : `${cat.color}33` }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SCM / NAV toggle */}
+      <div className="px-3 py-3 flex gap-2">
+        {(['scm', 'nav'] as const).map(m => (
+          <button key={m} onClick={() => setMode(m)}
+            className="flex-1 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest transition-all"
+            style={mode === m
+              ? { background: `${A}0.14)`, border: `1px solid ${A}0.40)`, color: '#ffa040' }
+              : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.40)' }
+            }>
+            {m === 'scm' ? 'SCM MODE' : 'NAV MODE'}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 // ─── Component Picker ─────────────────────────────────────────────────────────
 
@@ -970,6 +1283,7 @@ const ShipConfigurator = () => {
             {/* Stats + actions — col-4 */}
             <div className="col-span-12 lg:col-span-4 space-y-4">
               <StatsPanel slots={slots} />
+              {/* <EnergyMFDPanel slots={slots} crossSection={ship.crossSection ?? null} /> */}
 
               {/* Configs sauvegardées */}
               {isAuthenticated && loadouts.length > 0 && (

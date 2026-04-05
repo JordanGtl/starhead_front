@@ -469,6 +469,8 @@ const resources = {
         feature2Desc: 'Remplacez chaque composant par les meilleures options.',
         feature3Label: 'Partagez votre configuration',
         feature3Desc: 'Générez un lien pour partager votre loadout optimal.',
+        signatures: 'Signatures',
+        powerManagement: 'Gestion de l\'énergie',
       },
       missions: {
         title: 'Missions',
@@ -1270,6 +1272,8 @@ const resources = {
         feature2Desc: 'Replace each component with the best options.',
         feature3Label: 'Share your configuration',
         feature3Desc: 'Generate a link to share your optimal loadout.',
+        signatures: 'Signatures',
+        powerManagement: 'Power Management',
       },
       missions: {
         title: 'Missions',
