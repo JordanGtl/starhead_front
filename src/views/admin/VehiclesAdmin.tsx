@@ -20,6 +20,7 @@ interface AdminVehicle {
   internalName:  string;
   image:         string | null;
   isPublished:   boolean;
+  isInGame:      boolean;
   name:          string;
   manufacturer:  string | null;
   movementClass: string | null;
@@ -237,6 +238,7 @@ const VehiclesAdmin = () => {
   const [filterMC, setFilterMC]               = useState('');
   const [filterRole, setFilterRole]           = useState('');
   const [filterPublished, setFilterPublished] = useState<'' | 'true' | 'false'>('');
+  const [filterInGame,    setFilterInGame]    = useState<'' | 'true' | 'false'>('');
 
   useEffect(() => {
     if (!authLoading && (!user || !user.roles?.includes('ROLE_ADMIN'))) {
@@ -244,17 +246,18 @@ const VehiclesAdmin = () => {
     }
   }, [authLoading, user, router]);
 
-  const load = useCallback(async (p = page, q = search, manuf = filterManuf, mc = filterMC, role = filterRole, pub = filterPublished) => {
+  const load = useCallback(async (p = page, q = search, manuf = filterManuf, mc = filterMC, role = filterRole, pub = filterPublished, inGame = filterInGame) => {
     if (!user?.roles?.includes('ROLE_ADMIN')) return;
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ page: String(p), pagesize: '30' });
-      if (q)     params.set('q', q);
-      if (manuf) params.set('manufacturer', manuf);
-      if (mc)    params.set('movementClass', mc);
-      if (role)  params.set('role', role);
-      if (pub)   params.set('published', pub);
+      if (q)      params.set('q', q);
+      if (manuf)  params.set('manufacturer', manuf);
+      if (mc)     params.set('movementClass', mc);
+      if (role)   params.set('role', role);
+      if (pub)    params.set('published', pub);
+      if (inGame) params.set('inGame', inGame);
       if (selectedVersion) params.set('version', String(selectedVersion.id));
       const result = await apiFetch<Page>(`/api/admin/vehicles?${params}`);
       setData(result);
@@ -263,7 +266,20 @@ const VehiclesAdmin = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterManuf, filterMC, filterRole, filterPublished, user, selectedVersion]);
+  }, [page, search, filterManuf, filterMC, filterRole, filterPublished, filterInGame, user, selectedVersion]);
+
+  const toggleInGame = async (v: AdminVehicle) => {
+    const newValue = !v.isInGame;
+    setData(prev => prev ? { ...prev, items: prev.items.map(i => i.id === v.id ? { ...i, isInGame: newValue } : i) } : prev);
+    try {
+      await apiFetch(`/api/admin/vehicles/${v.id}/in-game`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isInGame: newValue }),
+      });
+    } catch {
+      setData(prev => prev ? { ...prev, items: prev.items.map(i => i.id === v.id ? { ...i, isInGame: !newValue } : i) } : prev);
+    }
+  };
 
   const togglePublish = async (v: AdminVehicle) => {
     const newValue = !v.isPublished;
@@ -290,17 +306,17 @@ const VehiclesAdmin = () => {
 
   useEffect(() => {
     if (!user?.roles?.includes('ROLE_ADMIN')) return;
-    const t = setTimeout(() => { setPage(1); load(1, search, filterManuf, filterMC, filterRole, filterPublished); }, 350);
+    const t = setTimeout(() => { setPage(1); load(1, search, filterManuf, filterMC, filterRole, filterPublished, filterInGame); }, 350);
     return () => clearTimeout(t);
   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!user?.roles?.includes('ROLE_ADMIN')) return;
     setPage(1);
-    load(1, search, filterManuf, filterMC, filterRole, filterPublished);
-  }, [filterManuf, filterMC, filterRole, filterPublished]); // eslint-disable-line react-hooks/exhaustive-deps
+    load(1, search, filterManuf, filterMC, filterRole, filterPublished, filterInGame);
+  }, [filterManuf, filterMC, filterRole, filterPublished, filterInGame]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const goPage = (p: number) => { setPage(p); load(p, search, filterManuf, filterMC, filterRole, filterPublished); };
+  const goPage = (p: number) => { setPage(p); load(p, search, filterManuf, filterMC, filterRole, filterPublished, filterInGame); };
 
   const updateVehicleImage = (id: number, image: string | null) => {
     setData(prev => prev ? { ...prev, items: prev.items.map(v => v.id === id ? { ...v, image } : v) } : prev);
@@ -393,9 +409,16 @@ const VehiclesAdmin = () => {
               <option value="false">Non publiés</option>
             </select>
 
-            {(filterManuf || filterMC || filterRole || filterPublished || search) && (
+            <select value={filterInGame} onChange={e => setFilterInGame(e.target.value as '' | 'true' | 'false')}
+              className="h-10 rounded-lg border border-border bg-card px-3 text-sm text-foreground focus:border-primary focus:outline-none">
+              <option value="">Tous les statuts</option>
+              <option value="true">En jeu</option>
+              <option value="false">Concept</option>
+            </select>
+
+            {(filterManuf || filterMC || filterRole || filterPublished || filterInGame || search) && (
               <button
-                onClick={() => { setSearch(''); setFilterManuf(''); setFilterMC(''); setFilterRole(''); setFilterPublished(''); setPage(1); load(1, '', '', '', '', ''); }}
+                onClick={() => { setSearch(''); setFilterManuf(''); setFilterMC(''); setFilterRole(''); setFilterPublished(''); setFilterInGame(''); setPage(1); load(1, '', '', '', '', '', ''); }}
                 className="h-10 rounded-lg border border-border bg-card px-3 text-xs text-muted-foreground hover:text-foreground"
               >
                 Réinitialiser
@@ -426,6 +449,7 @@ const VehiclesAdmin = () => {
                       </th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Prix</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Publié</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">En jeu</th>
                       <th className="px-4 py-3 w-8" />
                     </tr>
                   </thead>
@@ -481,6 +505,19 @@ const VehiclesAdmin = () => {
                                 }`}
                               >
                                 {v.isPublished ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-center hidden sm:table-cell" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => toggleInGame(v)}
+                                title={v.isInGame ? 'Marquer comme concept' : 'Marquer comme en jeu'}
+                                className={`inline-flex items-center justify-center rounded-full p-1.5 transition-colors ${
+                                  v.isInGame
+                                    ? 'text-blue-400 hover:bg-blue-500/10'
+                                    : 'text-muted-foreground/30 hover:bg-secondary hover:text-muted-foreground'
+                                }`}
+                              >
+                                <Car className="h-4 w-4" />
                               </button>
                             </td>
                             <td className="px-4 py-3 text-right">

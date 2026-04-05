@@ -48,6 +48,7 @@ interface VehicleDetail {
   sizeX:         number | null;
   sizeY:         number | null;
   sizeZ:         number | null;
+  isInGame:      boolean;
   description:   string | null;
   image:         string | null;
   loadout:       LoadoutEntry[];
@@ -245,6 +246,10 @@ const VehicleDetail = () => {
               )}
               <h1 className="font-display text-4xl font-bold text-foreground">{vehicle.name}</h1>
               <div className="mt-3 flex flex-wrap gap-2">
+                {vehicle.isInGame
+                  ? <Badge className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400"><Truck className="mr-1 h-3 w-3" />En jeu</Badge>
+                  : <Badge className="border-amber-500/40 bg-amber-500/10 text-amber-400">Concept</Badge>
+                }
                 {displayType  && <Badge variant="outline">{displayType}</Badge>}
                 {vehicle.role && <Badge variant="outline">{vehicle.role}</Badge>}
                 {vehicle.minCrew != null && (

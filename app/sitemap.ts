@@ -50,26 +50,35 @@ async function fetchField<T = number>(path: string, field: string): Promise<T[]>
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [
     shipIds,
+    vehicleIds,
     componentIds,
     locationIds,
     blueprintIds,
     manufacturerSlugs,
     newsRsiIds,
     spectrumIds,
+    missionIds,
   ] = await Promise.all([
     fetchField<number>('/api/ships',             'id'),
+    fetchField<number>('/api/vehicles',          'id'),
     fetchField<number>('/api/items',             'id'),
     fetchField<number>('/api/locations',         'id'),
     fetchField<number>('/api/blueprints',        'id'),
     fetchField<string>('/api/manufacturers',     'slug'),
-    fetchField<number>('/api/news',              'id'),   // news renvoie rsiId sous le champ "id"
+    fetchField<number>('/api/news',              'id'),
     fetchField<number>('/api/spectrum/posts',    'id'),
+    fetchField<number>('/api/missions',          'id'),
   ]);
 
   const dynamicRoutes: MetadataRoute.Sitemap = [
     ...shipIds.map(id => ({
       url:             `${BASE_URL}/ships/${id}`,
       priority:        0.8 as const,
+      changeFrequency: 'weekly' as const,
+    })),
+    ...vehicleIds.map(id => ({
+      url:             `${BASE_URL}/vehicles/${id}`,
+      priority:        0.7 as const,
       changeFrequency: 'weekly' as const,
     })),
     ...componentIds.map(id => ({
@@ -101,6 +110,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url:             `${BASE_URL}/spectrum/${id}`,
       priority:        0.4 as const,
       changeFrequency: 'never' as const,
+    })),
+    ...missionIds.map(id => ({
+      url:             `${BASE_URL}/missions/${id}`,
+      priority:        0.5 as const,
+      changeFrequency: 'monthly' as const,
     })),
   ];
 

@@ -59,6 +59,7 @@ interface ShipDetail {
   sizeY:                   number | null;
   sizeZ:                   number | null;
   size:                    string | null;
+  isInGame:                boolean;
   description:             string | null;
   insuranceBaseWait:       number | null;
   insuranceMandatoryWait:  number | null;
@@ -339,6 +340,10 @@ const ShipDetail = () => {
                 {ship.name}
               </h1>
               <div className="mt-3 flex flex-wrap gap-2">
+                {ship.isInGame
+                  ? <Badge className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400"><Rocket className="mr-1 h-3 w-3" />Flight Ready</Badge>
+                  : <Badge className="border-amber-500/40 bg-amber-500/10 text-amber-400">Concept</Badge>
+                }
                 {ship.career  && <Badge variant="outline">{ship.career}</Badge>}
                 {ship.role    && <Badge variant="outline">{ship.role}</Badge>}
                 {ship.size    && <Badge variant="outline">{ship.size}</Badge>}
@@ -453,6 +458,19 @@ const ShipDetail = () => {
 
           </div>
         </div>
+
+        {/* Bloc concept — pas de loadout */}
+        {ship.loadout.length === 0 && !ship.isInGame && (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-6 py-8 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10">
+              <Rocket className="h-5 w-5 text-amber-400" />
+            </div>
+            <p className="text-sm font-semibold text-amber-400">Vaisseau en concept</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Ce vaisseau n'est pas encore disponible en jeu. Aucun loadout ni statistique de jeu ne sont disponibles pour le moment.
+            </p>
+          </div>
+        )}
 
         {/* Loadout + Caractéristiques */}
         {ship.loadout.length > 0 && (

@@ -21,6 +21,7 @@ interface AdminShip {
   internalName: string;
   image:        string | null;
   isPublished:  boolean;
+  isInGame:     boolean;
   name:         string;
   manufacturer: string | null;
   career:       string | null;
@@ -440,6 +441,7 @@ const ShipsAdmin = () => {
   const [filterCareer, setFilterCareer]       = useState('');
   const [filterRole, setFilterRole]           = useState('');
   const [filterPublished, setFilterPublished] = useState<'' | 'true' | 'false'>('');
+  const [filterInGame,    setFilterInGame]    = useState<'' | 'true' | 'false'>('');
 
   useEffect(() => {
     if (!authLoading && (!user || !user.roles?.includes('ROLE_ADMIN'))) {
@@ -447,7 +449,7 @@ const ShipsAdmin = () => {
     }
   }, [authLoading, user, router]);
 
-  const load = useCallback(async (p = page, q = search, manuf = filterManuf, career = filterCareer, role = filterRole, pub = filterPublished) => {
+  const load = useCallback(async (p = page, q = search, manuf = filterManuf, career = filterCareer, role = filterRole, pub = filterPublished, inGame = filterInGame) => {
     if (!user?.roles?.includes('ROLE_ADMIN')) return;
     setLoading(true);
     setError(null);
@@ -458,6 +460,7 @@ const ShipsAdmin = () => {
       if (career) params.set('career', career);
       if (role)   params.set('role', role);
       if (pub)    params.set('published', pub);
+      if (inGame) params.set('inGame', inGame);
       if (selectedVersion) params.set('version', String(selectedVersion.id));
       const result = await apiFetch<Page>(`/api/admin/ships?${params}`);
       setData(result);
@@ -466,7 +469,26 @@ const ShipsAdmin = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterManuf, filterCareer, filterRole, filterPublished, user, selectedVersion]);
+  }, [page, search, filterManuf, filterCareer, filterRole, filterPublished, filterInGame, user, selectedVersion]);
+
+  const toggleInGame = async (ship: AdminShip) => {
+    const newValue = !ship.isInGame;
+    setData(prev => prev ? {
+      ...prev,
+      items: prev.items.map(s => s.id === ship.id ? { ...s, isInGame: newValue } : s),
+    } : prev);
+    try {
+      await apiFetch(`/api/admin/ships/${ship.id}/in-game`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isInGame: newValue }),
+      });
+    } catch {
+      setData(prev => prev ? {
+        ...prev,
+        items: prev.items.map(s => s.id === ship.id ? { ...s, isInGame: !newValue } : s),
+      } : prev);
+    }
+  };
 
   const togglePublish = async (ship: AdminShip) => {
     const newValue = !ship.isPublished;
@@ -503,7 +525,7 @@ const ShipsAdmin = () => {
   // Debounce recherche
   useEffect(() => {
     if (!user?.roles?.includes('ROLE_ADMIN')) return;
-    const t = setTimeout(() => { setPage(1); load(1, search, filterManuf, filterCareer, filterRole, filterPublished); }, 350);
+    const t = setTimeout(() => { setPage(1); load(1, search, filterManuf, filterCareer, filterRole, filterPublished, filterInGame); }, 350);
     return () => clearTimeout(t);
   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -511,10 +533,10 @@ const ShipsAdmin = () => {
   useEffect(() => {
     if (!user?.roles?.includes('ROLE_ADMIN')) return;
     setPage(1);
-    load(1, search, filterManuf, filterCareer, filterRole, filterPublished);
-  }, [filterManuf, filterCareer, filterRole, filterPublished]); // eslint-disable-line react-hooks/exhaustive-deps
+    load(1, search, filterManuf, filterCareer, filterRole, filterPublished, filterInGame);
+  }, [filterManuf, filterCareer, filterRole, filterPublished, filterInGame]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const goPage = (p: number) => { setPage(p); load(p, search, filterManuf, filterCareer, filterRole, filterPublished); };
+  const goPage = (p: number) => { setPage(p); load(p, search, filterManuf, filterCareer, filterRole, filterPublished, filterInGame); };
 
   const updateShipImage = (id: number, image: string | null) => {
     setData(prev => prev ? {
@@ -632,8 +654,19 @@ const ShipsAdmin = () => {
               <option value="false">Non publiés</option>
             </select>
 
+            {/* En jeu / Concept */}
+            <select
+              value={filterInGame}
+              onChange={e => setFilterInGame(e.target.value as '' | 'true' | 'false')}
+              className="h-10 rounded-lg border border-border bg-card px-3 text-sm text-foreground focus:border-primary focus:outline-none"
+            >
+              <option value="">Tous les statuts</option>
+              <option value="true">En jeu</option>
+              <option value="false">Concept</option>
+            </select>
+
             {/* Reset filters */}
-            {(filterManuf || filterCareer || filterRole || filterPublished || search) && (
+            {(filterManuf || filterCareer || filterRole || filterPublished || filterInGame || search) && (
               <button
                 onClick={() => {
                   setSearch('');
@@ -641,8 +674,9 @@ const ShipsAdmin = () => {
                   setFilterCareer('');
                   setFilterRole('');
                   setFilterPublished('');
+                  setFilterInGame('');
                   setPage(1);
-                  load(1, '', '', '', '', '');
+                  load(1, '', '', '', '', '', '');
                 }}
                 className="h-10 rounded-lg border border-border bg-card px-3 text-xs text-muted-foreground hover:text-foreground"
               >
@@ -681,6 +715,7 @@ const ShipsAdmin = () => {
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Carrière</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Prix</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Publié</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">En jeu</th>
                       <th className="px-4 py-3 w-8" />
                     </tr>
                   </thead>
@@ -743,10 +778,20 @@ const ShipsAdmin = () => {
                                     : 'text-muted-foreground/30 hover:bg-secondary hover:text-muted-foreground'
                                 }`}
                               >
-                                {ship.isPublished
-                                  ? <Eye className="h-4 w-4" />
-                                  : <EyeOff className="h-4 w-4" />
-                                }
+                                {ship.isPublished ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-center hidden sm:table-cell" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => toggleInGame(ship)}
+                                title={ship.isInGame ? 'Marquer comme concept' : 'Marquer comme en jeu'}
+                                className={`inline-flex items-center justify-center rounded-full p-1.5 transition-colors ${
+                                  ship.isInGame
+                                    ? 'text-blue-400 hover:bg-blue-500/10'
+                                    : 'text-muted-foreground/30 hover:bg-secondary hover:text-muted-foreground'
+                                }`}
+                              >
+                                <Rocket className="h-4 w-4" />
                               </button>
                             </td>
                             <td className="px-4 py-3 text-right">
