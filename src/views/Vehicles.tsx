@@ -81,10 +81,6 @@ const VehicleCard = ({ v }: { v: Vehicle }) => {
           {v.manufacturer ? (shortManufacturer[v.manufacturer] ?? v.manufacturer) : "—"}
         </div>
 
-        {/* Type badge — bottom right */}
-        <span className={`absolute bottom-3 right-3 inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${badgeStyle}`}>
-          {displayType}
-        </span>
       </div>
 
       {/* Info bar */}
