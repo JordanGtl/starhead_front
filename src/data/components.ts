@@ -231,8 +231,10 @@ export async function fetchComponents(params?: {
   return data;
 }
 
-export async function fetchComponent(id: number, locale = 'en'): Promise<ShipComponent> {
-  return apiFetch<ShipComponent>(`/api/items/${id}?locale=${locale}`);
+export async function fetchComponent(id: number, locale = 'en', gameVersion?: number): Promise<ShipComponent> {
+  const qs = new URLSearchParams({ locale });
+  if (gameVersion) qs.set('gameVersion', String(gameVersion));
+  return apiFetch<ShipComponent>(`/api/items/${id}?${qs}`);
 }
 
 export const getComponentById = (id: number): ShipComponent | undefined =>

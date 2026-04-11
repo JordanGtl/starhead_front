@@ -656,11 +656,11 @@ const ComponentDetail = () => {
     if (!id) return;
     setLoading(true);
     setError(null);
-    fetchComponent(Number(id), locale)
+    fetchComponent(Number(id), locale, selectedVersion?.id)
       .then(setComponent)
       .catch(() => setError("Composant introuvable."))
       .finally(() => setLoading(false));
-  }, [id, locale]);
+  }, [id, locale, selectedVersion?.id]);
 
   if (loading) return <div className="container py-8"><Skeleton /></div>;
 
