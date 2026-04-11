@@ -19,16 +19,17 @@ import { componentTypeLabel } from '@/data/components';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface SlotStats {
-  health:       number | null;
-  powerOutput:  number | null;
-  powerDraw:    number | null;
-  shieldHealth: number | null;
-  shieldRegen:  number | null;
-  qdSpeed:      number | null;
-  qdSpoolUp:    number | null;
-  weaponDps:    number | null;
-  emSignature:  number | null;
-  irSignature:  number | null;
+  health:        number | null;
+  powerOutput:   number | null;
+  powerDraw:     number | null;
+  shieldHealth:  number | null;
+  shieldRegen:   number | null;
+  qdSpeed:       number | null;
+  qdSpoolUp:     number | null;
+  weaponDps:     number | null;
+  emSignature:   number | null;
+  irSignature:   number | null;
+  powerSegment:  number | null; // segments consommés en Online (4.7+)
 }
 
 interface ConfigSlot {
@@ -94,9 +95,9 @@ interface ItemDetail {
   health:       number | null;
   powerPlant?:  { powerOutput: number | null; emSignature: number | null } | null;
   cooler?:      { powerDraw: number | null; coolingRate: number | null; emSignature: number | null; irSignature: number | null } | null;
-  shield?:      { maxShieldHealth: number | null; maxShieldRegen: number | null } | null;
-  quantumDrive?:{ driveSpeed: number | null; spoolUpTime: number | null; emSignature: number | null } | null;
-  shipWeapon?:  { ammoDamage: any[] | null; fireModes: any[] | null; emSignature: number | null } | null;
+  shield?:      { maxShieldHealth: number | null; maxShieldRegen: number | null; powerSegment: number | null } | null;
+  quantumDrive?:{ driveSpeed: number | null; spoolUpTime: number | null; emSignature: number | null; powerSegment: number | null } | null;
+  shipWeapon?:  { ammoDamage: any[] | null; fireModes: any[] | null; emSignature: number | null; powerDraw: number | null } | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -138,17 +139,25 @@ function extractItemStats(detail: ItemDetail): SlotStats {
     detail.shipWeapon?.emSignature ??
     null;
 
+  const powerSegment =
+    detail.shield?.powerSegment ??
+    detail.cooler?.powerDraw ??
+    detail.quantumDrive?.powerSegment ??
+    detail.shipWeapon?.powerDraw ??
+    null;
+
   return {
-    health:       detail.health ?? null,
-    powerOutput:  detail.powerPlant?.powerOutput ?? null,
-    powerDraw:    detail.cooler?.powerDraw ?? null,
-    shieldHealth: detail.shield?.maxShieldHealth ?? null,
-    shieldRegen:  detail.shield?.maxShieldRegen ?? null,
-    qdSpeed:      qd?.driveSpeed != null ? Math.round(qd.driveSpeed / 10_000) / 100 : null,
-    qdSpoolUp:    qd?.spoolUpTime ?? null,
+    health:        detail.health ?? null,
+    powerOutput:   detail.powerPlant?.powerOutput ?? null,
+    powerDraw:     detail.cooler?.powerDraw ?? null,
+    shieldHealth:  detail.shield?.maxShieldHealth ?? null,
+    shieldRegen:   detail.shield?.maxShieldRegen ?? null,
+    qdSpeed:       qd?.driveSpeed != null ? Math.round(qd.driveSpeed / 10_000) / 100 : null,
+    qdSpoolUp:     qd?.spoolUpTime ?? null,
     weaponDps,
-    emSignature:  emSig,
-    irSignature:  detail.cooler?.irSignature ?? null,
+    emSignature:   emSig,
+    irSignature:   detail.cooler?.irSignature ?? null,
+    powerSegment,
   };
 }
 
@@ -338,7 +347,7 @@ const ENERGY_CATS: EnergyCat[] = [
   { key: 'qd',       label: 'QD',   icon: Gauge,       color: '#a855f7', types: ['QuantumDrive']                               },
   { key: 'engines',  label: 'ENG',  icon: Rocket,      color: '#f59e0b', types: ['FuelTank', 'FuelIntake', 'QuantumFuelTank']  },
   { key: 'sensors',  label: 'SEN',  icon: Radio,       color: '#10b981', types: ['Radar']                                      },
-  { key: 'systems',  label: 'SYS',  icon: Heart,       color: '#ec4899', types: []                                             },
+  { key: 'systems',  label: 'SYS',  icon: Heart,       color: '#ec4899', types: ['LifeSupportGenerator']                      },
   { key: 'coolers',  label: 'COOL', icon: Thermometer, color: '#06b6d4', types: ['Cooler']                                     },
 ];
 
@@ -355,13 +364,34 @@ const MAX_ROWS = 10;
 
 function buildInitProfile(maxSeg: number, slotValues: ConfigSlot[]): PowerProfile {
   if (maxSeg === 0) return { output: 0, alloc: { ...ZERO_ALLOC } };
-  const active = ENERGY_CATS.filter(c =>
-    c.types.length === 0 || slotValues.some(s => c.types.includes(s.type))
-  );
-  const per = Math.floor(maxSeg / Math.max(1, active.length));
-  const rem = maxSeg - per * active.length;
+
   const alloc = { ...ZERO_ALLOC };
-  active.forEach((c, i) => { alloc[c.key as EnergyCatKey] = per + (i < rem ? 1 : 0); });
+
+  // Sommer les powerSegment réels par catégorie
+  for (const slot of slotValues) {
+    const ps = slot.stats?.powerSegment;
+    if (ps == null || ps <= 0) continue;
+    const cat = ENERGY_CATS.find(c => c.types.includes(slot.type));
+    if (cat) alloc[cat.key as EnergyCatKey] += Math.round(ps);
+  }
+
+  // Vérifier si on a des données réelles (au moins une catégorie non-zéro)
+  const hasRealData = Object.values(alloc).some(v => v > 0);
+
+  if (!hasRealData) {
+    // Fallback : distribution uniforme sur les catégories actives
+    const active = ENERGY_CATS.filter(c =>
+      c.types.length === 0 || slotValues.some(s => c.types.includes(s.type))
+    );
+    const per = Math.floor(maxSeg / Math.max(1, active.length));
+    const rem = maxSeg - per * active.length;
+    active.forEach((c, i) => { alloc[c.key as EnergyCatKey] = per + (i < rem ? 1 : 0); });
+    return { output: maxSeg, alloc };
+  }
+
+  // On conserve les consommations réelles même si total > maxSeg :
+  // le consumePct > 100% signalera le dépassement en rouge dans l'UI.
+
   return { output: maxSeg, alloc };
 }
 
@@ -1283,7 +1313,7 @@ const ShipConfigurator = () => {
             {/* Stats + actions — col-4 */}
             <div className="col-span-12 lg:col-span-4 space-y-4">
               <StatsPanel slots={slots} />
-              {/* <EnergyMFDPanel slots={slots} crossSection={ship.crossSection ?? null} /> */}
+              <EnergyMFDPanel slots={slots} crossSection={ship.crossSection ?? null} />
 
               {/* Configs sauvegardées */}
               {isAuthenticated && loadouts.length > 0 && (

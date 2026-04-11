@@ -83,6 +83,7 @@ export interface MissileRackData {
 /** Composant de vaisseau tel que retourné par GET /api/items */
 export interface ShipComponent {
   id: number;
+  dataId: number;
   ref: string;
   internalName: string;
   name: string | null;
@@ -110,6 +111,23 @@ export interface ShipComponent {
   missile?: MissileData | null;
   missileRack?: MissileRackData | null;
   personalArmor?: PersonalArmorData | null;
+  shopLocations?: ShopLocation[];
+  lootLocations?: LootEntry[];
+}
+
+export interface ShopLocation {
+  shop:         string;
+  location:     string;
+  buyPrice:     number | null;
+  sellPrice:    number | null;
+  currentStock: number | null;
+  maxStock:     number | null;
+}
+
+export interface LootEntry {
+  archetype:  string;
+  lootTables: string[];
+  rarity:     string | null;
 }
 
 export interface PersonalArmorData {

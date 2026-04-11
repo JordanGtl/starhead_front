@@ -1,7 +1,7 @@
 'use client';
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Radio, ScrollText, Route, PersonStanding, Sword, Package, GitCompareArrows } from "lucide-react";
+import { Search, Menu, X, LogIn, LogOut, User, ChevronDown, Rocket, Crosshair, Cpu, MapPin, Users, Target, Car, Building2, BookOpen, Wrench, Newspaper, Database, ChevronRight, Tag, Shield, Settings2, FlaskConical, Radio, ScrollText, Route, PersonStanding, Sword, Package, GitCompareArrows, Pencil } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVersion } from "@/contexts/VersionContext";
@@ -442,6 +442,16 @@ const Navbar = () => {
                     >
                       <Package className="h-4 w-4 text-muted-foreground" />
                       Mon inventaire
+                    </Link>
+
+                    {/* Contributions */}
+                    <Link
+                      href="/contributions"
+                      onClick={() => setUserOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary/40"
+                    >
+                      <Pencil className="h-4 w-4 text-muted-foreground" />
+                      Mes contributions
                     </Link>
 
                     {/* Admin */}

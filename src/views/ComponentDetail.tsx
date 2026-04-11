@@ -6,21 +6,24 @@ import { useTranslation } from "react-i18next";
 import { useVersion } from "@/contexts/VersionContext";
 import { apiFetch } from "@/lib/api";
 import { useSEO } from "@/hooks/useSEO";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Cpu, Shield, Zap, Thermometer, Gauge,
   Radar, Target, Fuel, Heart, Tag, Layers, AlertCircle,
   Activity, Flame, Wind, Radio, Crosshair, Timer,
   ShoppingBag, MapPin, CircleDollarSign, Package, Share2, Check,
   HardHat, Shirt, PersonStanding, Backpack, Snowflake, Sun,
-  FlaskConical, Pill, Utensils,
+  FlaskConical, Pill, Utensils, Pencil,
 } from "lucide-react";
 import {
   fetchComponent, componentTypeLabel, gradeLabel,
   type ShipComponent, type ShieldData, type PowerPlantData,
   type QuantumDriveData, type CoolerData, type ShipWeaponData,
   type MissileData, type MissileRackData, type PersonalArmorData,
+  type LootEntry,
 } from "@/data/components";
 import PageHeader from "@/components/PageHeader";
+import ProposeEditModal from "@/components/ProposeEditModal";
 
 // ─── Styles par type ──────────────────────────────────────────────────────────
 
@@ -132,7 +135,7 @@ const ShieldStats = ({ d }: { d: ShieldData }) => (
         <StatRow label="Drain réserve"    value={fmtPct(d.reservePoolDrainRateRatio)} accent="text-orange-400" />
       </>
     )}
-    {d.resistance && d.resistance.filter((r) => r.max !== 0).length > 0 && (
+    {Array.isArray(d.resistance) && d.resistance.filter((r) => r.max !== 0).length > 0 && (
       <>
         <Divider label="Résistances" />
         {d.resistance.filter((r) => r.max !== 0).map((r) => <ResistBar key={r.damageType} label={r.damageType} value={r.max} />)}
@@ -435,6 +438,8 @@ const ShopsSection = ({
   const hasBuy  = shops.some(s => s.buyPrice  !== null);
   const hasSell = shops.some(s => s.sellPrice !== null);
 
+  if (fetched && shops.length === 0) return null;
+
   return (
     <div className="rounded-xl border border-border/50 bg-card/60 overflow-hidden">
       <div className="flex items-center gap-2 border-b border-border/40 px-5 py-3.5">
@@ -462,14 +467,6 @@ const ShopsSection = ({
               <div className="h-4 w-16 rounded bg-muted/40" />
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Vide */}
-      {!loading && fetched && shops.length === 0 && (
-        <div className="flex flex-col items-center gap-2 py-10 text-center">
-          <ShoppingBag className="h-8 w-8 text-muted-foreground/20" />
-          <p className="text-sm text-muted-foreground/50">Non disponible en magasin</p>
         </div>
       )}
 
@@ -519,6 +516,77 @@ const ShopsSection = ({
   );
 };
 
+// ─── Loot section ────────────────────────────────────────────────────────────
+
+/** Convert "LootArchetype_Container_Components_S0_Common" -> "Container Components S0" */
+function archetypeLabel(internal: string): string {
+  return internal
+    .replace(/^LootArchetype_/, '')
+    .replace(/_Common$|_Uncommon$|_Rare$/, '')
+    .replace(/_/g, ' ');
+}
+
+/** Convert "LootTable_Container_Large_Generic_Common" -> "Large Generic" */
+function tableLabel(internal: string): string {
+  return internal
+    .replace(/^LootTable_/, '')
+    .replace(/_Common$|_Uncommon$|_Rare$/, '')
+    .replace(/^Container_/, '')
+    .replace(/_/g, ' ');
+}
+
+const RARITY_STYLE: Record<string, string> = {
+  Common:   'bg-zinc-700/60 text-zinc-300',
+  Uncommon: 'bg-emerald-900/40 text-emerald-300',
+  Rare:     'bg-blue-900/40 text-blue-300',
+};
+
+const LootSection = ({ entries }: { entries: LootEntry[] }) => {
+  if (!entries || entries.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-card/60 overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-border/40 px-5 py-3.5">
+        <Package className="h-4 w-4 text-primary" />
+        <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+          Loot
+        </h2>
+        <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+          {entries.length} source{entries.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+      <div className="divide-y divide-border/40">
+        {entries.map((entry, i) => (
+          <div key={i} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/10 transition-colors">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/50 bg-secondary shrink-0">
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {archetypeLabel(entry.archetype)}
+              </p>
+              {entry.lootTables && entry.lootTables.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {entry.lootTables.map((t, j) => (
+                    <span key={j} className="rounded bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      {tableLabel(t)}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            {entry.rarity && (
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${RARITY_STYLE[entry.rarity] ?? 'bg-muted/40 text-muted-foreground'}`}>
+                {entry.rarity}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ─── Vaisseaux équipés (placeholder) ─────────────────────────────────────────
 
 const EquippedShipsSection = () => (
@@ -562,10 +630,12 @@ const ComponentDetail = () => {
   const { t, i18n }         = useTranslation();
   const { selectedVersion } = useVersion();
   const locale              = i18n.language?.split("-")[0] ?? "en";
+  const { isAuthenticated } = useAuth();
 
-  const [component, setComponent] = useState<ShipComponent | null>(null);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
+  const [component, setComponent]       = useState<ShipComponent | null>(null);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
+  const [showPropose, setShowPropose]   = useState(false);
 
   useSEO({
     title: component?.name ?? undefined,
@@ -611,6 +681,7 @@ const ComponentDetail = () => {
   const name = component.name ?? component.internalName;
 
   return (
+    <>
     <div className="min-h-screen bg-background">
 
       <PageHeader
@@ -641,13 +712,13 @@ const ComponentDetail = () => {
           {/* Contenu principal — col-9 */}
           <div className="lg:col-span-9 grid gap-6 lg:grid-cols-[1fr_360px]">
 
-          {/* Shops + Vaisseaux équipés */}
+          {/* Shops + Loot + Vaisseaux équipés */}
           <div className="space-y-6 self-start">
             <ShopsSection
               itemRef={component.ref ?? null}
               versionId={selectedVersion?.id ?? null}
             />
-            <EquippedShipsSection />
+            <LootSection entries={component.lootLocations ?? []} />
           </div>
 
           {/* Caractéristiques générales */}
@@ -675,6 +746,17 @@ const ComponentDetail = () => {
 
             {/* Bouton partage */}
             <ShareButton />
+
+            {/* Proposer une modification */}
+            {isAuthenticated && component.dataId && (
+              <button
+                onClick={() => setShowPropose(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.98]"
+              >
+                <Pencil className="h-4 w-4" />
+                <span>Proposer une modification</span>
+              </button>
+            )}
 
             {/* Caractéristiques générales */}
             <div className="rounded-xl border border-border/50 bg-card/60 overflow-hidden">
@@ -707,6 +789,25 @@ const ComponentDetail = () => {
         </div>{/* fin grid-cols-12 */}
       </div>
     </div>
+
+    {/* Modal de proposition */}
+    {showPropose && component.dataId && (
+      <ProposeEditModal
+        itemDataId={component.dataId}
+        itemName={name}
+        fields={[
+          { key: 'name_fr',         label: 'Nom (FR)',          currentValue: locale === 'fr' ? component.name ?? undefined : undefined },
+          { key: 'name_en',         label: 'Nom (EN)',          currentValue: locale === 'en' ? component.name ?? undefined : undefined },
+          { key: 'short_name_fr',   label: 'Nom court (FR)',    currentValue: undefined },
+          { key: 'short_name_en',   label: 'Nom court (EN)',    currentValue: undefined },
+          { key: 'description_fr',  label: 'Description (FR)',  currentValue: undefined, multiline: true },
+          { key: 'description_en',  label: 'Description (EN)',  currentValue: undefined, multiline: true },
+          { key: 'manufacturer',    label: 'Fabricant',         currentValue: component.manufacturer ?? undefined },
+        ]}
+        onClose={() => setShowPropose(false)}
+      />
+    )}
+    </>
   );
 };
 

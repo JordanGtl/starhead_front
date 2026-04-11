@@ -8,6 +8,7 @@ export interface User {
   name: string;
   roles: string[];
   emailVerifiedAt: string | null;
+  contributorPoints: number;
 }
 
 interface AuthContextType {
