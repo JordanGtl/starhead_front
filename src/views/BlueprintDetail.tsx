@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useVersion } from "@/contexts/VersionContext";
 import { apiFetch } from "@/lib/api";
+import { slugify } from "@/lib/slugify";
 import PageHeader from "@/components/PageHeader";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -222,7 +223,7 @@ const ResourceNode = ({
   const name     = resolved?.name ?? node.name ?? null;
   const isRaw    = !name;
   const label    = name ?? (node.ref ? node.ref.slice(0, 8) + "…" : "?");
-  const itemPath = resolved?.id != null ? `/components/${resolved.id}` : null;
+  const itemPath = resolved?.id != null ? `/components/${resolved.id}/${slugify(resolved.name)}` : null;
   const isConsumable = node.type === "item";
 
   const inner = (
@@ -521,28 +522,46 @@ const CraftedPropertiesPanel = ({ tiers }: { tiers: Tier[] }) => {
 // BlueprintDetail page
 // ---------------------------------------------------------------------------
 
-const BlueprintDetail = () => {
+interface BlueprintDetailProps {
+  /** Données pré-chargées côté serveur (SSR) — le composant les affiche immédiatement
+   *  puis refetch silencieusement une fois la version de jeu sélectionnée par l'utilisateur. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialData?: Record<string, any> | null;
+}
+
+const BlueprintDetail = ({ initialData = null }: BlueprintDetailProps) => {
   const { id }              = useParams<{ id: string }>();
   const { t, i18n }         = useTranslation();
   const { selectedVersion } = useVersion();
   const router              = useRouter();
 
-  const [bp, setBp]           = useState<BlueprintDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  /** Initialise le nameMap depuis les ingrédients de initialData si disponibles */
+  const buildNameMap = (data: BlueprintDetail | null): Map<string, ResolvedItem> => {
+    const map = new Map<string, ResolvedItem>();
+    for (const ing of data?.ingredients ?? []) {
+      map.set(ing.ref, { id: ing.itemId, ref: ing.ref, name: ing.name, type: ing.type });
+    }
+    return map;
+  };
+
+  const [bp, setBp]           = useState<BlueprintDetail | null>(initialData as BlueprintDetail | null);
+  // Pas de spinner si on a déjà les données SSR
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError]     = useState<string | null>(null);
-  const [nameMap, setNameMap] = useState<Map<string, ResolvedItem>>(new Map());
+  const [nameMap, setNameMap] = useState<Map<string, ResolvedItem>>(() => buildNameMap(initialData as BlueprintDetail | null));
 
   useSEO({
     title: bp?.outputName ?? bp?.internalName ?? undefined,
     description: bp ? `Blueprint : ${bp.outputName ?? bp.internalName}. Type: ${bp.outputType ?? "—"}. Matériaux et temps de craft sur StarHead.` : undefined,
-    path: id ? `/blueprints/${id}` : undefined,
+    path: id ? `/blueprints/${id}/${slugify(bp?.outputName ?? bp?.internalName)}` : undefined,
     noindex: false,
   });
 
-  // Fetch blueprint detail — nameMap built directly from ingredients
+  // Refetch quand la version de jeu change.
+  // Si on a déjà des données SSR, on fait un refetch silencieux (pas de spinner).
   useEffect(() => {
     if (!id || !selectedVersion) return;
-    setLoading(true);
+    if (!bp) setLoading(true);
     setError(null);
     const qs = new URLSearchParams({
       gameVersion: String(selectedVersion.id),
@@ -551,14 +570,11 @@ const BlueprintDetail = () => {
     apiFetch<BlueprintDetail>(`/api/blueprints/${id}?${qs}`)
       .then((data) => {
         setBp(data);
-        const map = new Map<string, ResolvedItem>();
-        for (const ing of data.ingredients ?? []) {
-          map.set(ing.ref, { id: ing.itemId, ref: ing.ref, name: ing.name, type: ing.type });
-        }
-        setNameMap(map);
+        setNameMap(buildNameMap(data));
       })
       .catch(() => setError("Blueprint introuvable"))
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, selectedVersion, i18n.language]);
 
   // allRefs still used for the resolved count in sidebar
@@ -575,7 +591,8 @@ const BlueprintDetail = () => {
   const Icon      = outputTypeIcon(bp?.outputType ?? null);
   const craftTime = fmtCraftTime(bp?.craftTimeSec ?? null);
 
-  if (loading) {
+  // Spinner uniquement si aucune donnée disponible (ni SSR ni client)
+  if (loading && !bp) {
     return (
       <div className="relative min-h-screen bg-background">
         <PageHeader
@@ -755,7 +772,7 @@ const BlueprintDetail = () => {
                   {[...nameMap.values()].map((item) => (
                     <li key={item.ref}>
                       <Link
-                        href={`/components/${item.id}`}
+                        href={`/components/${item.id}/${slugify(item.name)}`}
                         className="flex items-center gap-1.5 text-xs text-primary hover:underline truncate"
                       >
                         <ChevronRight className="h-3 w-3 shrink-0" />

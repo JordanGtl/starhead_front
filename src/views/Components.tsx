@@ -11,6 +11,7 @@ import {
   fetchComponents, componentTypeLabel, gradeLabel,
   type ShipComponent,
 } from "@/data/components";
+import { slugify } from "@/lib/slugify";
 import PageHeader from "@/components/PageHeader";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -56,7 +57,7 @@ const ComponentCard = ({ c }: { c: ShipComponent }) => {
 
   return (
     <Link
-      href={`/components/${c.id}`}
+      href={`/components/${c.id}/${slugify(c.name)}`}
       className="group rounded-lg border border-border bg-card overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_24px_hsl(var(--primary)/0.1)] block"
     >
       {/* En-tête : nom + grade + taille — style infobulle */}

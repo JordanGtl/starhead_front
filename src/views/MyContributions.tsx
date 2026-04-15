@@ -6,6 +6,7 @@ import {
   Star, Trophy, Package,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { slugify } from "@/lib/slugify";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface ProposalItem {
@@ -182,7 +183,7 @@ const MyContributions = () => {
                     <Pencil className="h-4.5 w-4.5 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <Link href={`/components/${p.item.id}`} className="text-sm font-semibold text-foreground hover:text-primary transition-colors truncate block">
+                    <Link href={`/components/${p.item.id}/${slugify(p.item.name)}`} className="text-sm font-semibold text-foreground hover:text-primary transition-colors truncate block">
                       {p.item.name}
                     </Link>
                     <p className="text-[11px] text-muted-foreground mt-0.5">

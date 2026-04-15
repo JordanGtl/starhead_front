@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { slugify } from '@/lib/slugify';
 
 const BASE_URL = 'https://star-head.sc';
 const API_URL  = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.star-head.sc';
@@ -30,16 +31,33 @@ const staticRoutes: MetadataRoute.Sitemap = [
   { url: `${BASE_URL}/legal/cookies`,                      priority: 0.2, changeFrequency: 'yearly' },
 ];
 
-// ─── Helper fetch ─────────────────────────────────────────────────────────────
+// ─── Helpers fetch ────────────────────────────────────────────────────────────
 
 async function fetchField<T = number>(path: string, field: string): Promise<T[]> {
   try {
-    const res = await fetch(`${API_URL}${path}`, {
-      next: { revalidate: 3600 },
-    });
+    const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
     const data: any[] = await res.json();
     return data.map((item) => item[field]).filter(Boolean) as T[];
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch a list and return items with only the requested fields. */
+async function fetchItems<T extends Record<string, unknown>>(
+  path: string,
+  fields: string[],
+): Promise<T[]> {
+  try {
+    const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    const data: any[] = await res.json();
+    return data.map((item) => {
+      const picked: Record<string, unknown> = {};
+      for (const f of fields) picked[f] = item[f] ?? null;
+      return picked as T;
+    });
   } catch {
     return [];
   }
@@ -51,23 +69,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [
     shipIds,
     vehicleIds,
-    componentIds,
+    components,
     locationIds,
-    blueprintIds,
+    blueprints,
     manufacturerSlugs,
     newsRsiIds,
     spectrumIds,
     missionIds,
   ] = await Promise.all([
-    fetchField<number>('/api/ships',             'id'),
-    fetchField<number>('/api/vehicles',          'id'),
-    fetchField<number>('/api/items',             'id'),
-    fetchField<number>('/api/locations',         'id'),
-    fetchField<number>('/api/blueprints',        'id'),
-    fetchField<string>('/api/manufacturers',     'slug'),
-    fetchField<number>('/api/news',              'id'),
-    fetchField<number>('/api/spectrum/posts',    'id'),
-    fetchField<number>('/api/missions',          'id'),
+    fetchField<number>('/api/ships',          'id'),
+    fetchField<number>('/api/vehicles',       'id'),
+    fetchItems<{ id: number; name: string | null }>('/api/items', ['id', 'name']),
+    fetchField<number>('/api/locations',      'id'),
+    fetchItems<{ id: number; outputName: string | null; internalName: string }>('/api/blueprints', ['id', 'outputName', 'internalName']),
+    fetchField<string>('/api/manufacturers',  'slug'),
+    fetchField<number>('/api/news',           'id'),
+    fetchField<number>('/api/spectrum/posts', 'id'),
+    fetchField<number>('/api/missions',       'id'),
   ]);
 
   const dynamicRoutes: MetadataRoute.Sitemap = [
@@ -81,21 +99,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority:        0.7 as const,
       changeFrequency: 'weekly' as const,
     })),
-    ...componentIds.map(id => ({
-      url:             `${BASE_URL}/components/${id}`,
-      priority:        0.6 as const,
-      changeFrequency: 'monthly' as const,
-    })),
+    ...components.map(({ id, name }) => {
+      const slug = slugify(name);
+      return {
+        url:             `${BASE_URL}/components/${id}${slug ? `/${slug}` : ''}`,
+        priority:        0.6 as const,
+        changeFrequency: 'monthly' as const,
+      };
+    }),
     ...locationIds.map(id => ({
       url:             `${BASE_URL}/locations/${id}`,
       priority:        0.5 as const,
       changeFrequency: 'monthly' as const,
     })),
-    ...blueprintIds.map(id => ({
-      url:             `${BASE_URL}/blueprints/${id}`,
-      priority:        0.5 as const,
-      changeFrequency: 'monthly' as const,
-    })),
+    ...blueprints.map(({ id, outputName, internalName }) => {
+      const slug = slugify(outputName ?? internalName);
+      return {
+        url:             `${BASE_URL}/blueprints/${id}${slug ? `/${slug}` : ''}`,
+        priority:        0.5 as const,
+        changeFrequency: 'monthly' as const,
+      };
+    }),
     ...manufacturerSlugs.map(slug => ({
       url:             `${BASE_URL}/manufacturers/${slug}`,
       priority:        0.5 as const,

@@ -8,6 +8,7 @@ import {
   fetchPlayerWeapons, playerWeaponTypeLabel, playerWeaponSubtypeLabel,
   PLAYER_WEAPON_TYPES, type PlayerWeaponItem,
 } from "@/data/playerWeapons";
+import { slugify } from "@/lib/slugify";
 import PageHeader from "@/components/PageHeader";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -50,7 +51,7 @@ const WeaponCard = ({ item }: { item: PlayerWeaponItem }) => {
 
   return (
     <Link
-      href={`/components/${item.id}`}
+      href={`/components/${item.id}/${slugify(item.name ?? item.internalName)}`}
       className="group rounded-lg border border-border bg-card overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_24px_hsl(var(--primary)/0.1)] block"
     >
       {/* En-tête */}

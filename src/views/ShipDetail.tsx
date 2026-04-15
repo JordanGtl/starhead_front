@@ -14,6 +14,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useVersion } from "@/contexts/VersionContext";
 import { apiFetch, API_URL } from "@/lib/api";
+import { slugify } from "@/lib/slugify";
 import { Badge } from "@/components/ui/badge";
 import { useSEO } from "@/hooks/useSEO";
 import { useTrackPageView } from "@/hooks/useAnalytics";
@@ -162,7 +163,7 @@ const LoadoutRow = ({ entry, t }: { entry: LoadoutEntry; t: (k: string) => strin
             <span className="text-xs text-muted-foreground">S{entry.size}</span>
           )}
           {entry.itemId != null && (
-            <Link href={`/components/${entry.itemId}`} className="text-[10px] text-primary hover:underline">
+            <Link href={`/components/${entry.itemId}/${slugify(entry.name)}`} className="text-[10px] text-primary hover:underline">
               Détail →
             </Link>
           )}

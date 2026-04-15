@@ -8,6 +8,7 @@ import {
   fetchConsumables, consumableTypeLabel, consumableSubtypeLabel,
   CONSUMABLE_TYPES, type ConsumableItem,
 } from "@/data/consumables";
+import { slugify } from "@/lib/slugify";
 import PageHeader from "@/components/PageHeader";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -46,7 +47,7 @@ const ConsumableCard = ({ item }: { item: ConsumableItem }) => {
 
   return (
     <Link
-      href={`/components/${item.id}`}
+      href={`/components/${item.id}/${slugify(item.name ?? item.internalName)}`}
       className="group rounded-lg border border-border bg-card overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_24px_hsl(var(--primary)/0.1)] block"
     >
       {/* En-tête */}

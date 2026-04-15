@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useVersion } from "@/contexts/VersionContext";
 import { apiFetch } from "@/lib/api";
+import { slugify } from "@/lib/slugify";
 import { useSEO } from "@/hooks/useSEO";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -640,7 +641,7 @@ const ComponentDetail = () => {
   useSEO({
     title: component?.name ?? undefined,
     description: component ? `${component.name} — ${component.type ?? ""} grade ${component.grade ?? ""} taille ${component.size ?? ""}. Stats complètes sur StarHead.` : undefined,
-    path: id ? `/components/${id}` : undefined,
+    path: id ? `/components/${id}/${slugify(component?.name)}` : undefined,
     jsonLd: component ? {
       "@context": "https://schema.org",
       "@type": "Product",
@@ -648,7 +649,7 @@ const ComponentDetail = () => {
       "description": `${component.type ?? ""} grade ${component.grade ?? ""} taille ${component.size ?? ""}`,
       ...(component.manufacturer ? { "brand": { "@type": "Brand", "name": component.manufacturer } } : {}),
       "category": component.type ?? undefined,
-      "url": `https://star-head.sc/components/${component.id}`,
+      "url": `https://star-head.sc/components/${component.id}/${slugify(component.name)}`,
     } : undefined,
   });
 

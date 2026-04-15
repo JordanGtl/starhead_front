@@ -11,6 +11,7 @@ import {
   fetchArmor, armorTypeLabel, ARMOR_TYPES,
   type ArmorItem,
 } from "@/data/armor";
+import { slugify } from "@/lib/slugify";
 import PageHeader from "@/components/PageHeader";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -52,7 +53,7 @@ const ArmorCard = ({ item }: { item: ArmorItem }) => {
 
   return (
     <Link
-      href={`/components/${item.id}`}
+      href={`/components/${item.id}/${slugify(item.name ?? item.internalName)}`}
       className="group rounded-lg border border-border bg-card overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_24px_hsl(var(--primary)/0.1)] block"
     >
       {/* En-tête */}

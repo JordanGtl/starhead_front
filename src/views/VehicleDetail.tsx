@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { apiFetch, API_URL } from "@/lib/api";
+import { slugify } from "@/lib/slugify";
 import { Badge } from "@/components/ui/badge";
 import { useSEO } from "@/hooks/useSEO";
 import { movementClassToType } from "@/data/vehicles";
@@ -104,7 +105,7 @@ const LoadoutRow = ({ entry, t }: { entry: LoadoutEntry; t: (k: string) => strin
         <div className="flex shrink-0 items-center gap-2">
           {entry.size != null && <span className="text-xs text-muted-foreground">S{entry.size}</span>}
           {entry.itemId != null && (
-            <Link href={`/components/${entry.itemId}`} className="text-[10px] text-primary hover:underline">Détail →</Link>
+            <Link href={`/components/${entry.itemId}/${slugify(entry.name)}`} className="text-[10px] text-primary hover:underline">Détail →</Link>
           )}
           {hasStats && (
             <button onClick={() => setOpen(v => !v)} className="rounded p-0.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors">

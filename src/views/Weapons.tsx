@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useVersion } from "@/contexts/VersionContext";
 import { fetchWeapons, weaponTypeLabel, type Weapon } from "@/data/weapons";
+import { slugify } from "@/lib/slugify";
 import PageHeader from "@/components/PageHeader";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -48,7 +49,7 @@ const WeaponCard = ({ weapon }: { weapon: Weapon }) => {
 
   return (
     <Link
-      href={`/components/${weapon.id}`}
+      href={`/components/${weapon.id}/${slugify(weapon.name ?? weapon.internalName)}`}
       className="group rounded-lg border border-border bg-card overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_24px_hsl(var(--primary)/0.1)] block"
     >
       {/* En-tête */}

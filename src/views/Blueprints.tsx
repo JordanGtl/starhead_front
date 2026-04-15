@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useVersion } from "@/contexts/VersionContext";
 import { apiFetch } from "@/lib/api";
+import { slugify } from "@/lib/slugify";
 import PageHeader from "@/components/PageHeader";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -87,7 +88,7 @@ const BlueprintCard = ({ bp }: { bp: Blueprint }) => {
 
   return (
     <Link
-      href={`/blueprints/${bp.id}`}
+      href={`/blueprints/${bp.id}/${slugify(bp.outputName ?? bp.internalName)}`}
       className="rounded-lg border border-border bg-card overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_24px_hsl(var(--primary)/0.1)] block"
     >
       <div className="px-4 pt-4 pb-3">
