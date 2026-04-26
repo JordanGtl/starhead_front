@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import {
   ArrowLeft, Shield, Zap, Thermometer, Gauge, Crosshair,
-  Box, Users, Ruler, Fuel, Rocket, Loader2, Target, Radio,
+  Box, Users, Ruler, ArrowLeftRight, ArrowUpDown, Fuel, Rocket, Loader2, Target, Radio,
   ChevronDown, Heart, Share2, Wrench, Check, Tag, History, X,
 } from "lucide-react";
 import {
@@ -164,12 +164,13 @@ const LoadoutRow = ({ entry, t }: { entry: LoadoutEntry; t: (k: string) => strin
           )}
           {entry.itemId != null && (
             <Link href={`/components/${entry.itemId}/${slugify(entry.name)}`} className="text-[10px] text-primary hover:underline">
-              Détail →
+              {t("shipDetail.loadoutDetail")} →
             </Link>
           )}
           {hasStats && (
             <button
               onClick={() => setOpen(v => !v)}
+              aria-label={open ? t("shipDetail.collapseStats") : t("shipDetail.expandStats")}
               className="rounded p-0.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
             >
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -185,7 +186,7 @@ const LoadoutRow = ({ entry, t }: { entry: LoadoutEntry; t: (k: string) => strin
           {s!.powerOutput != null && (
             <div className="flex items-center gap-1.5">
               <Zap className="h-3 w-3 text-amber-400" />
-              <span className="text-[11px] text-muted-foreground">Produite</span>
+              <span className="text-[11px] text-muted-foreground">{t("shipDetail.loadoutPower")}</span>
               <span className="font-mono text-[11px] font-semibold text-amber-400">{s!.powerOutput} W</span>
             </div>
           )}
@@ -193,7 +194,7 @@ const LoadoutRow = ({ entry, t }: { entry: LoadoutEntry; t: (k: string) => strin
           {s!.powerDraw != null && (
             <div className="flex items-center gap-1.5">
               <Zap className="h-3 w-3 text-red-400" />
-              <span className="text-[11px] text-muted-foreground">Consommée</span>
+              <span className="text-[11px] text-muted-foreground">{t("shipDetail.loadoutPowerDraw")}</span>
               <span className="font-mono text-[11px] font-semibold text-red-400">{s!.powerDraw} W</span>
             </div>
           )}
@@ -201,7 +202,7 @@ const LoadoutRow = ({ entry, t }: { entry: LoadoutEntry; t: (k: string) => strin
           {s!.health != null && (
             <div className="flex items-center gap-1.5">
               <Heart className="h-3 w-3 text-rose-400" />
-              <span className="text-[11px] text-muted-foreground">Vie</span>
+              <span className="text-[11px] text-muted-foreground">{t("shipDetail.loadoutHealth")}</span>
               <span className="font-mono text-[11px] font-semibold text-foreground">{s!.health.toLocaleString()}</span>
             </div>
           )}
@@ -245,6 +246,13 @@ const ShipDetail = () => {
     path:        id ? `/ships/${id}` : undefined,
   });
 
+  useEffect(() => {
+    if (!showHistory) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowHistory(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [showHistory]);
+
   if (loading) return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -279,7 +287,7 @@ const ShipDetail = () => {
     const url = window.location.href;
     if (navigator.share) {
       try {
-        await navigator.share({ title: ship.name, text: `${ship.name} — ${ship.role ?? ''} par ${ship.manufacturer ?? ''}`, url });
+        await navigator.share({ title: ship.name, text: t("shipDetail.shareText", { name: ship.name, role: ship.role ?? '', manufacturer: ship.manufacturer ?? '' }), url });
       } catch {}
     } else {
       await navigator.clipboard.writeText(url);
@@ -342,8 +350,8 @@ const ShipDetail = () => {
               </h1>
               <div className="mt-3 flex flex-wrap gap-2">
                 {ship.isInGame
-                  ? <Badge className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400"><Rocket className="mr-1 h-3 w-3" />Flight Ready</Badge>
-                  : <Badge className="border-amber-500/40 bg-amber-500/10 text-amber-400">Concept</Badge>
+                  ? <Badge className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400"><Rocket className="mr-1 h-3 w-3" />{t("ships.statusFlightReady")}</Badge>
+                  : <Badge className="border-amber-500/40 bg-amber-500/10 text-amber-400">{t("ships.statusInConcept")}</Badge>
                 }
                 {ship.career  && <Badge variant="outline">{ship.career}</Badge>}
                 {ship.role    && <Badge variant="outline">{ship.role}</Badge>}
@@ -360,20 +368,22 @@ const ShipDetail = () => {
               {/* Configurateur */}
               <Link
                 href={`/ships/configure?ship=${id}`}
+                aria-label={t("shipDetail.configurator")}
                 className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition-all hover:bg-primary/20 hover:border-primary/50"
               >
                 <Wrench className="h-4 w-4" />
-                <span className="hidden sm:inline">Configurer</span>
+                <span className="hidden sm:inline">{t("shipDetail.configurator")}</span>
               </Link>
 
               {/* Partager */}
               <button
                 onClick={handleShare}
+                aria-label={t("shipDetail.shareBtn")}
                 className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/80 px-4 py-2 text-sm font-medium text-muted-foreground backdrop-blur transition-all hover:text-foreground hover:border-border/80"
               >
                 {copied
-                  ? <><Check className="h-4 w-4 text-emerald-400" /><span className="hidden sm:inline text-emerald-400">Copié !</span></>
-                  : <><Share2 className="h-4 w-4" /><span className="hidden sm:inline">Partager</span></>
+                  ? <><Check className="h-4 w-4 text-emerald-400" /><span className="hidden sm:inline text-emerald-400">{t("shipDetail.copied")}</span></>
+                  : <><Share2 className="h-4 w-4" /><span className="hidden sm:inline">{t("shipDetail.shareBtn")}</span></>
                 }
               </button>
             </div>
@@ -392,24 +402,25 @@ const ShipDetail = () => {
             {/* Specs — colonne gauche */}
             <div className="p-6">
               <div className="grid grid-cols-3 gap-3">
-                <Spec icon={Ruler} label={t("shipDetail.length")}  value={ship.sizeX != null ? `${ship.sizeX.toFixed(1)} m` : null} />
-                <Spec icon={Ruler} label={t("shipDetail.beam")}    value={ship.sizeY != null ? `${ship.sizeY.toFixed(1)} m` : null} />
-                <Spec icon={Ruler} label={t("shipDetail.height")}  value={ship.sizeZ != null ? `${ship.sizeZ.toFixed(1)} m` : null} />
-                <Spec icon={Users} label={t("shipDetail.crew")}    value={crew} />
-                <Spec icon={Box}   label={t("shipDetail.cargo")}   value={ship.cargo != null ? `${ship.cargo} SCU` : null} />
+                <Spec icon={Ruler}          label={t("shipDetail.length")}    value={ship.sizeX != null ? `${ship.sizeX.toFixed(1)} m` : null} />
+                <Spec icon={ArrowLeftRight} label={t("shipDetail.beam")}      value={ship.sizeY != null ? `${ship.sizeY.toFixed(1)} m` : null} />
+                <Spec icon={ArrowUpDown}    label={t("shipDetail.height")}    value={ship.sizeZ != null ? `${ship.sizeZ.toFixed(1)} m` : null} />
+                <Spec icon={Users}          label={t("shipDetail.crew")}      value={crew} />
+                <Spec icon={Box}            label={t("shipDetail.cargo")}     value={ship.cargo != null ? `${ship.cargo} SCU` : null} />
                 {ship.insuranceBaseWait != null && (
-                  <Spec icon={Rocket} label="Insurance" value={`${ship.insuranceBaseWait} min`} />
+                  <Spec icon={Rocket} label={t("shipDetail.insurance")} value={`${ship.insuranceBaseWait} min`} />
                 )}
                 {(ship.priceEur != null || ship.price != null) && (
                   <div className="rounded-lg border border-border bg-card p-3">
                     <div className="flex items-center justify-between gap-2 text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Tag className="h-3.5 w-3.5" />
-                        <span className="text-xs">Prix boutique</span>
+                        <span className="text-xs">{t("shipDetail.priceStore")}</span>
                       </div>
                       <button
                         onClick={openHistory}
-                        title="Historique des prix"
+                        title={t("shipDetail.historyTitle")}
+                        aria-label={t("shipDetail.historyTitle")}
                         className="rounded p-0.5 text-muted-foreground/50 transition-colors hover:text-primary"
                       >
                         <History className="h-3.5 w-3.5" />
@@ -453,7 +464,12 @@ const ShipDetail = () => {
             <div className="p-6">
               {ship.description
                 ? <p className="text-sm leading-relaxed text-muted-foreground">{ship.description}</p>
-                : <p className="text-sm italic text-muted-foreground/40">Aucune description disponible.</p>
+                : (
+                  <div className="flex h-full min-h-[80px] flex-col items-center justify-center gap-2 text-center">
+                    <Rocket className="h-8 w-8 text-muted-foreground/15" />
+                    <p className="text-sm italic text-muted-foreground/40">{t("shipDetail.noDescription")}</p>
+                  </div>
+                )
               }
             </div>
 
@@ -466,10 +482,8 @@ const ShipDetail = () => {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10">
               <Rocket className="h-5 w-5 text-amber-400" />
             </div>
-            <p className="text-sm font-semibold text-amber-400">Vaisseau en concept</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Ce vaisseau n'est pas encore disponible en jeu. Aucun loadout ni statistique de jeu ne sont disponibles pour le moment.
-            </p>
+            <p className="text-sm font-semibold text-amber-400">{t("shipDetail.conceptTitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("shipDetail.conceptDesc")}</p>
           </div>
         )}
 
@@ -496,8 +510,8 @@ const ShipDetail = () => {
                       <span className="text-[10px] text-muted-foreground/40">({loadoutByType[type].length})</span>
                     </div>
                     <div className="grid gap-1.5 sm:grid-cols-2">
-                      {loadoutByType[type].map((e, i) => (
-                        <LoadoutRow key={i} entry={e} t={t} />
+                      {loadoutByType[type].map((e) => (
+                        <LoadoutRow key={e.port} entry={e} t={t} />
                       ))}
                     </div>
                   </div>
@@ -509,8 +523,8 @@ const ShipDetail = () => {
             <div className="col-span-12 lg:col-span-3">
               <div className="h-full rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
                 <div className="px-4 py-3 bg-secondary/40">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                    Caractéristiques
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+                    {t("shipDetail.statsTitle")}
                   </p>
                 </div>
 
@@ -519,12 +533,12 @@ const ShipDetail = () => {
                   <div className="px-4 py-3">
                     <div className="flex items-center gap-2 mb-2 text-amber-400">
                       <Zap className="h-3.5 w-3.5 shrink-0" />
-                      <span className="text-[10px] font-semibold uppercase tracking-widest">Énergie</span>
+                      <span className="text-xs font-semibold uppercase tracking-widest">{t("shipDetail.powerSection")}</span>
                     </div>
                     <div className="space-y-1">
                       {ship.stats?.powerGenerated != null && (
                         <div className="flex items-baseline justify-between">
-                          <span className="text-xs text-muted-foreground">Générée</span>
+                          <span className="text-xs text-muted-foreground">{t("shipDetail.powerGenerated")}</span>
                           <span className="font-mono text-sm font-bold text-emerald-400 tabular-nums">
                             {ship.stats.powerGenerated.toLocaleString()} W
                           </span>
@@ -532,7 +546,7 @@ const ShipDetail = () => {
                       )}
                       {ship.stats?.powerConsumed != null && (
                         <div className="flex items-baseline justify-between">
-                          <span className="text-xs text-muted-foreground">Consommée</span>
+                          <span className="text-xs text-muted-foreground">{t("shipDetail.powerConsumed")}</span>
                           <span className="font-mono text-sm font-bold text-red-400 tabular-nums">
                             {ship.stats.powerConsumed.toLocaleString()} W
                           </span>
@@ -547,12 +561,12 @@ const ShipDetail = () => {
                   <div className="px-4 py-3">
                     <div className="flex items-center gap-2 mb-2 text-violet-400">
                       <Gauge className="h-3.5 w-3.5 shrink-0" />
-                      <span className="text-[10px] font-semibold uppercase tracking-widest">Quantum Drive</span>
+                      <span className="text-xs font-semibold uppercase tracking-widest">{t("shipDetail.qdSection")}</span>
                     </div>
                     <div className="space-y-1">
                       {ship.stats.qdSpeed != null && (
                         <div className="flex items-baseline justify-between">
-                          <span className="text-xs text-muted-foreground">Vitesse</span>
+                          <span className="text-xs text-muted-foreground">{t("shipDetail.qdSpeed")}</span>
                           <span className="font-mono text-sm font-bold text-foreground tabular-nums">
                             {ship.stats.qdSpeed.toFixed(2)} Mm/s
                           </span>
@@ -560,7 +574,7 @@ const ShipDetail = () => {
                       )}
                       {ship.stats.qdSpoolUp != null && (
                         <div className="flex items-baseline justify-between">
-                          <span className="text-xs text-muted-foreground">Spool-up</span>
+                          <span className="text-xs text-muted-foreground">{t("shipDetail.qdSpoolUp")}</span>
                           <span className="font-mono text-sm font-bold text-foreground tabular-nums">
                             {ship.stats.qdSpoolUp}s
                           </span>
@@ -575,12 +589,12 @@ const ShipDetail = () => {
                   <div className="px-4 py-3">
                     <div className="flex items-center gap-2 mb-2 text-blue-400">
                       <Shield className="h-3.5 w-3.5 shrink-0" />
-                      <span className="text-[10px] font-semibold uppercase tracking-widest">Bouclier</span>
+                      <span className="text-xs font-semibold uppercase tracking-widest">{t("shipDetail.shield")}</span>
                     </div>
                     <div className="space-y-1">
                       {ship.stats.shieldHealth != null && (
                         <div className="flex items-baseline justify-between">
-                          <span className="text-xs text-muted-foreground">Points de vie</span>
+                          <span className="text-xs text-muted-foreground">{t("shipDetail.shieldHp")}</span>
                           <span className="font-mono text-sm font-bold text-foreground tabular-nums">
                             {ship.stats.shieldHealth.toLocaleString()}
                           </span>
@@ -588,7 +602,7 @@ const ShipDetail = () => {
                       )}
                       {ship.stats.shieldRegen != null && (
                         <div className="flex items-baseline justify-between">
-                          <span className="text-xs text-muted-foreground">Régén. / s</span>
+                          <span className="text-xs text-muted-foreground">{t("shipDetail.shieldRegen")}</span>
                           <span className="font-mono text-sm font-bold text-foreground tabular-nums">
                             {ship.stats.shieldRegen.toLocaleString()}
                           </span>
@@ -603,10 +617,10 @@ const ShipDetail = () => {
                   <div className="px-4 py-3">
                     <div className="flex items-center gap-2 mb-2 text-red-400">
                       <Crosshair className="h-3.5 w-3.5 shrink-0" />
-                      <span className="text-[10px] font-semibold uppercase tracking-widest">Armement</span>
+                      <span className="text-xs font-semibold uppercase tracking-widest">{t("shipDetail.weaponSection")}</span>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <span className="text-xs text-muted-foreground">DPS total</span>
+                      <span className="text-xs text-muted-foreground">{t("shipDetail.weaponDps")}</span>
                       <span className="font-mono text-sm font-bold text-foreground tabular-nums">
                         {ship.stats.weaponDps.toLocaleString()}
                       </span>
@@ -617,7 +631,7 @@ const ShipDetail = () => {
                 {/* Aucune stat disponible */}
                 {!ship.stats?.powerGenerated && !ship.stats?.powerConsumed && !ship.stats?.qdSpeed && !ship.stats?.shieldHealth && !ship.stats?.weaponDps && (
                   <p className="px-4 py-4 text-xs italic text-muted-foreground/40">
-                    Aucune statistique disponible.
+                    {t("shipDetail.noStats")}
                   </p>
                 )}
               </div>
@@ -638,13 +652,18 @@ const ShipDetail = () => {
           />
 
           {/* Modale */}
-          <div className="relative z-10 flex w-full max-w-2xl flex-col rounded-xl border border-border bg-background shadow-2xl">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="price-history-title"
+            className="relative z-10 flex w-full max-w-2xl flex-col rounded-xl border border-border bg-background shadow-2xl"
+          >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div className="flex items-center gap-2">
                 <History className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-sm text-foreground">
-                  Historique des prix — {ship.name}
+                <span id="price-history-title" className="font-semibold text-sm text-foreground">
+                  {t("shipDetail.historyTitle")} — {ship.name}
                 </span>
               </div>
               <button
@@ -663,7 +682,7 @@ const ShipDetail = () => {
                 </div>
               ) : !priceHistory?.length ? (
                 <p className="py-12 text-center text-sm italic text-muted-foreground/50">
-                  Aucun historique disponible.
+                  {t("shipDetail.historyEmpty")}
                 </p>
               ) : (
                 <>
@@ -723,7 +742,7 @@ const ShipDetail = () => {
 
                   {/* Dernier relevé */}
                   <div className="mt-4 flex justify-between rounded-lg border border-border bg-secondary/20 px-3 py-2 text-xs text-muted-foreground">
-                    <span>Dernier relevé — {priceHistory[0].recordedAt}</span>
+                    <span>{t("shipDetail.historyLatest")} — {priceHistory[0].recordedAt}</span>
                     <div className="flex gap-3">
                       <span className="font-mono font-semibold text-primary">
                         ${priceHistory[0].priceUsd.toFixed(2)}

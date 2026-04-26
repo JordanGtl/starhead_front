@@ -28,7 +28,9 @@ const CategoryCard = ({ title, description, icon: Icon, count, href }: CategoryC
         <div className="mt-3 font-display text-xs font-medium text-primary">
           {count === null
             ? <span className="inline-block h-3 w-10 animate-pulse rounded bg-primary/20" />
-            : <>{count} {t("common.entries")} →</>
+            : count > 0
+              ? <>{count} {t("common.entries")} →</>
+              : <>→</>
           }
         </div>
       </div>

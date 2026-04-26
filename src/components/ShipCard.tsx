@@ -1,4 +1,5 @@
 'use client';
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Ship } from "@/data/ships";
@@ -48,6 +49,14 @@ const statusStyles = {
 
 const ShipCard = ({ ship }: ShipCardProps) => {
   const { t, i18n } = useTranslation();
+  const [imgError, setImgError] = useState(false);
+
+  const statusLabels: Record<string, string> = {
+    "Flight Ready":   t("ships.statusFlightReady"),
+    "In Concept":     t("ships.statusInConcept"),
+    "In Production":  t("ships.statusInProduction"),
+  };
+
   return (
     <Link
       href={`/ships/${ship.id}`}
@@ -55,15 +64,13 @@ const ShipCard = ({ ship }: ShipCardProps) => {
     >
       {/* Image area */}
       <div className="relative h-52 overflow-hidden bg-secondary">
-        {ship.image ? (
+        {ship.image && !imgError ? (
           <img
             src={ship.image?.startsWith('/') ? `${API_URL}${ship.image}` : ship.image}
             alt={ship.name}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
+            onError={() => setImgError(true)}
           />
         ) : (
           <div className="flex h-full items-center justify-center">
@@ -84,8 +91,8 @@ const ShipCard = ({ ship }: ShipCardProps) => {
         </div>
 
         {/* Status badge - bottom right */}
-        <span className={`absolute bottom-3 right-3 inline-flex rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${statusStyles[ship.status]}`}>
-          {ship.status}
+        <span className={`absolute bottom-3 right-3 inline-flex rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${statusStyles[ship.status] ?? 'bg-muted/80 text-foreground border-border/50'}`}>
+          {statusLabels[ship.status] ?? ship.status}
         </span>
       </div>
 
@@ -102,13 +109,8 @@ const ShipCard = ({ ship }: ShipCardProps) => {
 
       {/* Bottom section */}
       <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
-        {/* Manufacturer */}
-        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          {ship.manufacturer}
-        </p>
-
         {/* Ship name */}
-        <h3 className="mt-1 font-display text-xl font-bold text-foreground">
+        <h3 className="font-display text-xl font-bold text-foreground">
           {ship.name}
         </h3>
 
@@ -123,7 +125,7 @@ const ShipCard = ({ ship }: ShipCardProps) => {
               {i18n.language === 'en' ? (
                 <>
                   {ship.price != null && (
-                    <span className="font-mono text-sm font-semibold text-muted-foreground">
+                    <span className="font-mono text-sm font-semibold text-foreground">
                       ${ship.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   )}
@@ -136,7 +138,7 @@ const ShipCard = ({ ship }: ShipCardProps) => {
               ) : (
                 <>
                   {ship.priceEur != null && (
-                    <span className="font-mono text-sm font-semibold text-muted-foreground">
+                    <span className="font-mono text-sm font-semibold text-foreground">
                       {ship.priceEur.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     </span>
                   )}

@@ -97,8 +97,11 @@ const Ships = () => {
                   { label: t("ships.statsRoles"), value: new Set(allShips.map(s => s.role)).size },
                 ].map((stat) => (
                   <div key={stat.label} className="text-center">
-                    <p className="font-display text-2xl font-bold text-foreground">{stat.value}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{stat.label}</p>
+                    {loading
+                      ? <span className="inline-block h-7 w-8 animate-pulse rounded bg-muted" />
+                      : <p className="font-display text-2xl font-bold text-foreground">{stat.value}</p>
+                    }
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -203,8 +206,13 @@ const Ships = () => {
                 className="h-9 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground focus:border-primary focus:outline-none"
               >
                 <option value="">{t("common.allFem")}</option>
-                {["Small", "Medium", "Large", "Capital"].map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                {([
+                  { value: "Small",   label: t("ships.sizeSmall")   },
+                  { value: "Medium",  label: t("ships.sizeMedium")  },
+                  { value: "Large",   label: t("ships.sizeLarge")   },
+                  { value: "Capital", label: t("ships.sizeCapital") },
+                ] as const).map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
                 ))}
               </select>
             </div>
